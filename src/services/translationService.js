@@ -9,30 +9,18 @@ const ApiError = require("../utils/ApiError");
 const { paginateQuery } = require("../utils/pagination");
 const { containsRegex } = require("../utils/regex");
 const { collectTranslationKeys, mapTranslationRefs } = require("../utils/translationRef");
-const { describeLanguage } = require("../config/cms");
+const contentTranslationService = require("./contentTranslationService");
+const languageService = require("./languageService");
 
-const CACHE_TTL_MS = 30 * 1000;
-let cache = null;
-let cachedAt = 0;
+const dictionaryClause = {
+  $or: [{ type: "dictionary" }, { type: { $exists: false } }],
+};
 
 const invalidateTranslationCache = () => {
-  cache = null;
-  cachedAt = 0;
+  contentTranslationService.invalidateDictionary();
 };
 
-const loadActiveTranslations = async () => {
-  if (cache && Date.now() - cachedAt < CACHE_TTL_MS) {
-    return cache;
-  }
-
-  const docs = await Translation.find({ status: "active" }).select("key translations").lean();
-  const map = new Map(docs.map((doc) => [doc.key, doc.translations || {}]));
-  cache = map;
-  cachedAt = Date.now();
-  return map;
-};
-
-const lookupTranslation = (entry, language) => {
+const lookupTranslation = (entry, language, defaultCode = "en") => {
   if (!entry) {
     return "";
   }
@@ -43,17 +31,18 @@ const lookupTranslation = (entry, language) => {
     return selected;
   }
 
-  if (language !== "en" && typeof entry.en === "string") {
-    return entry.en;
+  if (language !== defaultCode && typeof entry[defaultCode] === "string") {
+    return entry[defaultCode];
   }
 
   return typeof selected === "string" ? selected : "";
 };
 
 const resolveContent = async (value, language) => {
-  const dictionary = await loadActiveTranslations();
+  const dictionary = await contentTranslationService.loadDictionary();
+  const defaultCode = await languageService.defaultCode();
 
-  return mapTranslationRefs(value, (ref) => lookupTranslation(dictionary.get(ref.$t), language));
+  return mapTranslationRefs(value, (ref) => lookupTranslation(dictionary.get(ref.$t), language, defaultCode));
 };
 
 const present = (doc) => {
@@ -80,7 +69,7 @@ const assertUniqueKeys = async (keys) => {
     return;
   }
 
-  const existing = await Translation.find({ key: { $in: keys } }).select("key").lean();
+  const existing = await Translation.find({ key: { $in: keys }, ...dictionaryClause }).select("key").lean();
 
   if (existing.length > 0) {
     throw new ApiError(
@@ -95,6 +84,7 @@ const createTranslation = async (payload, userId) => {
   await assertUniqueKeys([payload.key]);
   const doc = await Translation.create({
     ...payload,
+    type: "dictionary",
     createdBy: userId || null,
     updatedBy: userId || null,
   });
@@ -114,6 +104,7 @@ const bulkCreate = async (items, userId) => {
   const docs = await Translation.insertMany(
     items.map((item) => ({
       ...item,
+      type: "dictionary",
       createdBy: userId || null,
       updatedBy: userId || null,
     }))
@@ -125,12 +116,12 @@ const bulkCreate = async (items, userId) => {
 const updateTranslation = async (id, payload, userId) => {
   const existing = await Translation.findById(id).lean();
 
-  if (!existing) {
+  if (!existing || (existing.type && existing.type !== "dictionary")) {
     throw new ApiError(404, "Translation not found");
   }
 
   if (payload.key && payload.key !== existing.key) {
-    const clash = await Translation.findOne({ key: payload.key, _id: { $ne: id } }).select("_id").lean();
+    const clash = await Translation.findOne({ key: payload.key, _id: { $ne: id }, ...dictionaryClause }).select("_id").lean();
 
     if (clash) {
       throw new ApiError(409, "Translation key already exists");
@@ -152,7 +143,10 @@ const bulkUpdate = async (items, userId) => {
   const keys = items.map((item) => item.key).filter(Boolean);
   const ids = items.map((item) => item.id).filter(Boolean);
   const existing = await Translation.find({
-    $or: [...(ids.length ? [{ _id: { $in: ids } }] : []), ...(keys.length ? [{ key: { $in: keys } }] : [])],
+    $and: [
+      dictionaryClause,
+      { $or: [...(ids.length ? [{ _id: { $in: ids } }] : []), ...(keys.length ? [{ key: { $in: keys } }] : [])] },
+    ],
   })
     .select("_id key translations category description status")
     .lean();
@@ -206,6 +200,7 @@ const deleteTranslation = async (id) => {
   }
 
   invalidateTranslationCache();
+  contentTranslationService.invalidateDynamic();
   return present(doc);
 };
 
@@ -226,17 +221,47 @@ const getTranslationByKey = async (key, { activeOnly = false } = {}) => {
     filter.status = "active";
   }
 
-  const doc = await Translation.findOne(filter).lean();
+  let doc = await Translation.findOne({ ...filter, ...dictionaryClause }).lean();
 
   if (!doc) {
-    throw new ApiError(404, "Translation not found");
+    const staticRows = await Translation.find({ type: "static", key, ...(activeOnly ? { status: "active" } : {}) }).lean();
+
+    if (staticRows.length === 0) {
+      throw new ApiError(404, "Translation not found");
+    }
+
+    const translations = {};
+
+    for (const row of staticRows) {
+      translations[row.languageCode] = row.value;
+    }
+
+    return present({
+      _id: staticRows[0]._id,
+      key,
+      translations,
+      category: staticRows[0].category || "",
+      description: staticRows[0].description || "",
+      status: staticRows[0].status,
+      createdBy: staticRows[0].createdBy || null,
+      updatedBy: staticRows[0].updatedBy || null,
+      createdAt: staticRows[0].createdAt,
+      updatedAt: staticRows[0].updatedAt,
+    });
   }
 
-  return present(doc);
+  const staticRows = await Translation.find({ type: "static", key }).select("languageCode value").lean();
+  const translations = { ...(doc.translations || {}) };
+
+  for (const row of staticRows) {
+    translations[row.languageCode] = row.value;
+  }
+
+  return present({ ...doc, translations });
 };
 
 const listTranslations = async ({ page, limit, search, category, status, lang }) => {
-  const filter = {};
+  const filter = { $and: [dictionaryClause] };
 
   if (category) {
     filter.category = category;
@@ -260,7 +285,7 @@ const listTranslations = async ({ page, limit, search, category, status, lang })
       clauses.push({ [`translations.${lang}`]: regex });
     }
 
-    filter.$or = clauses;
+    filter.$and.push({ $or: clauses });
   }
 
   const result = await paginateQuery(Translation.find(filter), {
@@ -276,38 +301,44 @@ const listTranslations = async ({ page, limit, search, category, status, lang })
 };
 
 const dictionaryForLanguage = async (language) => {
-  const docs = await Translation.find({ status: "active" }).select("key translations").sort({ key: 1 }).lean();
+  const described = language && language.code ? language : await languageService.requireActive(language);
+  const dictionary = await contentTranslationService.loadDictionary();
   const translations = {};
 
-  for (const doc of docs) {
-    translations[doc.key] = lookupTranslation(doc.translations || {}, language);
+  for (const key of [...dictionary.keys()].sort()) {
+    translations[key] = lookupTranslation(dictionary.get(key), described.code, described.fallbackCode || "en");
   }
 
-  const described = describeLanguage(language);
-
   return {
-    language,
-    direction: described ? described.direction : "ltr",
-    fallbackLanguage: language === "en" ? null : "en",
+    language: described.code,
+    direction: described.direction,
+    fallbackLanguage: described.isDefault ? null : described.fallbackCode || "en",
     translations,
   };
 };
 
 const missingTranslations = async (language) => {
-  const docs = await Translation.find({ status: "active" }).select("key translations category").sort({ key: 1 }).lean();
-  const items = docs
-    .filter((doc) => {
-      const value = doc.translations ? doc.translations[language] : "";
-      return typeof value !== "string" || !value.trim();
-    })
-    .map((doc) => ({
-      key: doc.key,
-      category: doc.category || "",
-      language,
-      fallback: language === "en" ? "" : doc.translations?.en || "",
-    }));
+  const described = language && language.code ? language : await languageService.requireActive(language);
+  const dictionary = await contentTranslationService.loadDictionary();
+  const items = [];
 
-  return { language, count: items.length, items };
+  for (const [key, entry] of dictionary) {
+    const value = entry ? entry[described.code] : "";
+
+    if (typeof value === "string" && value.trim()) {
+      continue;
+    }
+
+    items.push({
+      key,
+      category: "",
+      language: described.code,
+      fallback: described.isDefault ? "" : entry?.[described.fallbackCode] || "",
+    });
+  }
+
+  items.sort((left, right) => left.key.localeCompare(right.key));
+  return { language: described.code, count: items.length, items };
 };
 
 const collectUsedKeys = async () => {
@@ -344,7 +375,7 @@ const collectUsedKeys = async () => {
 
 const unusedTranslations = async () => {
   const [docs, used] = await Promise.all([
-    Translation.find().select("key category status").sort({ key: 1 }).lean(),
+    Translation.find(dictionaryClause).select("key category status").sort({ key: 1 }).lean(),
     collectUsedKeys(),
   ]);
   const items = docs
@@ -361,7 +392,7 @@ const importTranslations = async (items, mode, userId) => {
   }
 
   const keys = items.map((item) => item.key);
-  const existing = await Translation.find({ key: { $in: keys } }).select("key translations").lean();
+  const existing = await Translation.find({ key: { $in: keys }, ...dictionaryClause }).select("key translations").lean();
   const existingKeys = new Map(existing.map((item) => [item.key, item]));
   const toCreate = [];
   const toUpdate = [];
@@ -389,7 +420,7 @@ const importTranslations = async (items, mode, userId) => {
 };
 
 const exportTranslations = async () => {
-  const docs = await Translation.find().sort({ key: 1 }).lean();
+  const docs = await Translation.find(dictionaryClause).sort({ key: 1 }).lean();
   return docs.map((doc) => ({
     key: doc.key,
     translations: doc.translations || {},
@@ -406,8 +437,12 @@ const duplicateTranslationTree = async (value, userId) => {
     return value;
   }
 
-  const existing = await Translation.find({ key: { $in: keys } }).lean();
-  const byKey = new Map(existing.map((item) => [item.key, item]));
+  const existing = await Translation.find({
+    key: { $in: keys },
+    $or: [{ type: "dictionary" }, { type: "static" }, { type: { $exists: false } }],
+  }).lean();
+  const byKey = new Map(existing.filter((item) => item.type !== "static").map((item) => [item.key, item]));
+  const staticRows = existing.filter((item) => item.type === "static");
   const replacements = new Map();
   const docs = [];
 
@@ -421,6 +456,7 @@ const duplicateTranslationTree = async (value, userId) => {
     const nextKey = `${key.slice(0, 140)}.copy.${crypto.randomBytes(3).toString("hex")}`;
     replacements.set(key, nextKey);
     docs.push({
+      type: "dictionary",
       key: nextKey,
       translations: source.translations || {},
       category: source.category || "",
@@ -431,9 +467,30 @@ const duplicateTranslationTree = async (value, userId) => {
     });
   }
 
+  for (const row of staticRows) {
+    const nextKey = replacements.get(row.key);
+
+    if (!nextKey) {
+      continue;
+    }
+
+    docs.push({
+      type: "static",
+      key: nextKey,
+      languageCode: row.languageCode,
+      value: row.value,
+      category: row.category || "",
+      description: `Duplicated from ${row.key}`,
+      status: row.status,
+      createdBy: userId || null,
+      updatedBy: userId || null,
+    });
+  }
+
   if (docs.length > 0) {
     await Translation.insertMany(docs);
     invalidateTranslationCache();
+    contentTranslationService.invalidateDynamic();
   }
 
   return mapTranslationRefs(value, (ref) => {
@@ -460,4 +517,8 @@ module.exports = {
   exportTranslations,
   duplicateTranslationTree,
   present,
+  resolve: contentTranslationService.resolve,
+  resolveMany: contentTranslationService.resolveMany,
+  removeEntityTranslations: contentTranslationService.removeForEntity,
+  copyEntityTranslations: contentTranslationService.copyForEntity,
 };

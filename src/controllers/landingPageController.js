@@ -47,7 +47,7 @@ const getEditorConfig = asyncHandler(async (req, res) => {
 });
 
 const getPublicLandingPage = asyncHandler(async (req, res) => {
-  const sections = await landingPageService.getPublicLandingPage();
+  const sections = await landingPageService.getPublicLandingPage(req.validated?.lang);
   return sendSuccess(res, 200, "Landing page fetched successfully", sections);
 });
 

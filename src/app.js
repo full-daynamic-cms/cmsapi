@@ -8,6 +8,7 @@ const authRouter = require("./routes/authRoutes");
 const cmsPublicRouter = require("./routes/public");
 const cmsAdminRouter = require("./routes/admin");
 const translationAliasRouter = require("./routes/translationAliasRoutes");
+const languageRouter = require("./routes/languageRoutes");
 const docsRouter = require("./routes/docsRoutes");
 const sanitizeRequest = require("./middleware/sanitize");
 const errorHandler = require("./middleware/errorHandler");
@@ -47,6 +48,7 @@ app.use("/api/uploads", uploadRouter);
 app.use("/api/public", cmsPublicRouter);
 app.use("/api/admin", cmsAdminRouter);
 app.use("/api/translations", translationAliasRouter);
+app.use("/api/languages", languageRouter);
 
 app.use((req, res) => {
   return sendError(res, 404, "Route not found");

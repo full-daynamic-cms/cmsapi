@@ -1,7 +1,8 @@
 const WebsiteSettings = require("../models/WebsiteSettings");
 const ApiError = require("../utils/ApiError");
-const { describeLanguage } = require("../config/cms");
 const translationService = require("./translationService");
+const languageService = require("./languageService");
+const { fieldsFor } = require("../config/translatableFields");
 const { pickSeo } = require("./seoService");
 
 const SINGLETON = "default";
@@ -55,15 +56,29 @@ const presentAdmin = (doc) => {
 
 const resolveRequestedLanguage = async (requested) => {
   const settings = await getSettingsDocument();
-  const supported = settings.supportedLanguages?.length ? settings.supportedLanguages : ["en", "ar"];
-  const code = (requested || settings.defaultLanguage || "en").trim().toLowerCase();
-  const described = describeLanguage(code);
+  const languages = await languageService.listActive();
+  const supported = languages.map((item) => item.code);
+  const defaultLanguage = languages.find((item) => item.isDefault) || languages[0];
+  const code = (requested || defaultLanguage?.code || settings.defaultLanguage || "en").trim().toLowerCase();
+  const described = languages.find((item) => item.code === code);
 
-  if (!described || !supported.includes(code)) {
+  if (!described) {
     throw new ApiError(400, "Unsupported language");
   }
 
-  return { settings, language: described, supported };
+  return {
+    settings,
+    supported,
+    defaultLanguage: defaultLanguage?.code || described.code,
+    language: {
+      code: described.code,
+      name: described.name,
+      nativeName: described.nativeName,
+      direction: described.direction,
+      isDefault: Boolean(described.isDefault),
+      fallbackCode: defaultLanguage?.code || described.code,
+    },
+  };
 };
 
 const assertPublicAvailable = async () => {
@@ -74,8 +89,29 @@ const assertPublicAvailable = async () => {
   }
 };
 
+const getAdminSettings = async () => {
+  const view = presentAdmin(await getSettingsDocument());
+  const languages = await languageService.listActive();
+
+  if (languages.length > 0) {
+    view.supportedLanguages = languages.map((item) => item.code);
+    view.defaultLanguage = languages.find((item) => item.isDefault)?.code || view.defaultLanguage;
+  }
+
+  return view;
+};
+
 const updateSettings = async (payload, userId) => {
   const update = { ...payload, updatedBy: userId || null };
+
+  if (payload.supportedLanguages || payload.defaultLanguage) {
+    const synced = await languageService.applySettingsLanguages({
+      codes: payload.supportedLanguages,
+      defaultLanguage: payload.defaultLanguage,
+    });
+    update.supportedLanguages = synced.codes;
+    update.defaultLanguage = synced.defaultLanguage;
+  }
 
   if (payload.contact) {
     const current = await getSettingsDocument();
@@ -101,9 +137,12 @@ const updateSettings = async (payload, userId) => {
 
 const getPublicSettings = async (requestedLanguage) => {
   const { settings, language, supported } = await resolveRequestedLanguage(requestedLanguage);
+  const languages = await languageService.listActive();
   const seo = pickSeo(settings.defaultSeo, language.code);
-  const resolved = await translationService.resolveContent(
-    {
+  const overlaid = await translationService.resolve({
+    entityType: "WebsiteSettings",
+    entityId: settings._id,
+    document: {
       websiteName: settings.websiteName || "",
       contact: {
         email: settings.contact?.email || "",
@@ -112,8 +151,19 @@ const getPublicSettings = async (requestedLanguage) => {
       },
       footer: settings.footer || {},
       header: settings.header || {},
-      seo,
       maintenanceMessage: settings.maintenanceMessage || "",
+    },
+    languageCode: language.code,
+    translatableFields: fieldsFor("WebsiteSettings"),
+  });
+  const resolved = await translationService.resolveContent(
+    {
+      websiteName: overlaid.websiteName,
+      contact: overlaid.contact,
+      footer: overlaid.footer,
+      header: overlaid.header,
+      seo,
+      maintenanceMessage: overlaid.maintenanceMessage,
     },
     language.code
   );
@@ -122,10 +172,18 @@ const getPublicSettings = async (requestedLanguage) => {
     websiteName: resolved.websiteName,
     logo: settings.logo || "",
     favicon: settings.favicon || "",
-    defaultLanguage: settings.defaultLanguage || "en",
+    defaultLanguage: language.fallbackCode || settings.defaultLanguage || "en",
     language: language.code,
     direction: language.direction,
-    supportedLanguages: supported.map((code) => describeLanguage(code)).filter(Boolean),
+    supportedLanguages: languages
+      .filter((item) => supported.includes(item.code))
+      .map((item) => ({
+        code: item.code,
+        name: item.name,
+        nativeName: item.nativeName,
+        direction: item.direction,
+        isDefault: item.isDefault,
+      })),
     socialLinks: settings.socialLinks || [],
     contact: resolved.contact,
     footer: resolved.footer,
@@ -139,6 +197,7 @@ const getPublicSettings = async (requestedLanguage) => {
 module.exports = {
   getSettingsDocument,
   presentAdmin,
+  getAdminSettings,
   resolveRequestedLanguage,
   assertPublicAvailable,
   updateSettings,

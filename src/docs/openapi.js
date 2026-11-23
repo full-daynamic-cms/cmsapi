@@ -1142,6 +1142,134 @@ paths["/api/translations/{key}"] = {
   }),
 };
 
+const language = {
+  type: "object",
+  properties: {
+    _id: id,
+    name: { type: "string", example: "Arabic" },
+    code: { type: "string", example: "ar" },
+    nativeName: { type: "string", example: "العربية" },
+    direction: { type: "string", enum: ["ltr", "rtl"] },
+    isDefault: { type: "boolean" },
+    isActive: { type: "boolean" },
+    isDeleted: { type: "boolean" },
+  },
+};
+
+paths["/api/languages"] = {
+  get: operation({
+    tag: "Languages",
+    summary: "List active languages",
+    responses: { 200: success("Records retrieved successfully", { type: "array", items: language }) },
+  }),
+  post: operation({
+    tag: "Languages",
+    summary: "Create a language",
+    auth: true,
+    body: jsonBody({
+      type: "object",
+      required: ["name", "code"],
+      properties: {
+        name: { type: "string" },
+        code: { type: "string", example: "ur" },
+        nativeName: { type: "string" },
+        direction: { type: "string", enum: ["ltr", "rtl"] },
+        isDefault: { type: "boolean" },
+        isActive: { type: "boolean" },
+      },
+    }),
+    responses: { 201: success("Language created successfully", language), 400: ref("BadRequest"), 401: ref("Unauthorized"), 409: ref("Conflict") },
+  }),
+};
+
+paths["/api/admin/languages"] = paths["/api/languages"];
+paths["/api/public/languages"] = {
+  get: operation({
+    tag: "Languages",
+    summary: "List active languages",
+    responses: paths["/api/languages"].get.responses,
+  }),
+};
+
+paths["/api/translations/static/{languageCode}"] = {
+  get: operation({
+    tag: "Translations",
+    summary: "Get static translations for a language",
+    description: "Returns a key-value map. Missing values fall back to the default language. Per-language static rows override legacy dictionary values.",
+    parameters: [{ name: "languageCode", in: "path", required: true, schema: { type: "string", example: "ar" } }],
+    responses: {
+      200: success("Translations retrieved successfully", {
+        type: "object",
+        properties: {
+          language: { type: "string" },
+          direction: { type: "string" },
+          fallbackLanguage: { type: "string", nullable: true },
+          translations: { type: "object", additionalProperties: { type: "string" } },
+        },
+      }),
+    },
+  }),
+};
+
+paths["/api/public/translations/static/{languageCode}"] = paths["/api/translations/static/{languageCode}"];
+paths["/api/admin/translations/static/{languageCode}"] = paths["/api/translations/static/{languageCode}"];
+
+paths["/api/translations/static"] = {
+  post: operation({
+    tag: "Translations",
+    summary: "Create a static translation",
+    auth: true,
+    body: jsonBody({
+      type: "object",
+      required: ["languageCode", "key", "value"],
+      properties: {
+        languageCode: { type: "string", example: "ar" },
+        key: { type: "string", example: "common.save" },
+        value: { type: "string", example: "حفظ" },
+      },
+    }),
+    responses: { 201: success("Translation created successfully"), 400: ref("BadRequest"), 401: ref("Unauthorized"), 409: ref("Conflict") },
+  }),
+};
+
+paths["/api/translations/dynamic"] = {
+  post: operation({
+    tag: "Translations",
+    summary: "Create a dynamic translation",
+    description: "Stores one translated field for a CMS record. The default language stays on the content document.",
+    auth: true,
+    body: jsonBody({
+      type: "object",
+      required: ["languageCode", "entityType", "entityId", "field", "value"],
+      properties: {
+        languageCode: { type: "string", example: "ar" },
+        entityType: { type: "string", example: "Section" },
+        entityId: id,
+        field: { type: "string", example: "content.title" },
+        value: { type: "string", example: "خدماتنا" },
+      },
+    }),
+    responses: { 201: success("Translation created successfully"), 400: ref("BadRequest"), 401: ref("Unauthorized"), 404: ref("NotFound"), 409: ref("Conflict") },
+  }),
+};
+
+paths["/api/admin/translations/dynamic"] = {
+  get: operation({
+    tag: "Translations",
+    summary: "List CMS records and their translation coverage",
+    auth: true,
+    parameters: [
+      { name: "entityType", in: "query", required: true, schema: { type: "string", example: "Section" } },
+      { name: "languageCode", in: "query", required: true, schema: { type: "string", example: "ar" } },
+      { name: "missing", in: "query", schema: { type: "boolean" } },
+      { name: "page", in: "query", schema: { type: "integer" } },
+      { name: "limit", in: "query", schema: { type: "integer" } },
+    ],
+    responses: { 200: success("Records retrieved successfully"), 401: ref("Unauthorized") },
+  }),
+  post: paths["/api/translations/dynamic"].post,
+};
+
 const blogFilters = [
   { name: "search", in: "query", schema: { type: "string" } },
   { name: "category", in: "query", schema: { type: "string" }, description: "Category id or slug." },
@@ -1457,7 +1585,7 @@ module.exports = {
       "",
       "Authenticate admin requests with `Authorization: Bearer <token>` from `POST /api/auth/login`.",
       "",
-      "Translation references use `{ \"$t\": \"home.hero.title\" }`. Public pages and blogs resolve those references and fall back to English. Plain strings, URLs, and image paths are never treated as keys.",
+      "Translation references use `{ \"$t\": \"home.hero.title\" }`. Public pages and blogs resolve those references, then apply dynamic translations, and fall back to the default language. Plain strings, URLs, and image paths are never treated as keys.",
       "",
       "The original landing-page routes remain available alongside the CMS.",
     ].join("\n"),
@@ -1471,6 +1599,7 @@ module.exports = {
     { name: "Pages" },
     { name: "Sections" },
     { name: "Translations" },
+    { name: "Languages" },
     { name: "Blogs" },
     { name: "Blog categories" },
     { name: "Media" },
@@ -1480,7 +1609,7 @@ module.exports = {
   "x-tagGroups": [
     { name: "System", tags: ["Health", "Auth"] },
     { name: "Landing page", tags: ["Landing page", "Uploads"] },
-    { name: "Website", tags: ["Pages", "Sections", "Translations", "Settings"] },
+    { name: "Website", tags: ["Pages", "Sections", "Translations", "Languages", "Settings"] },
     { name: "Blog", tags: ["Blogs", "Blog categories"] },
     { name: "Library", tags: ["Media", "Contact"] },
   ],

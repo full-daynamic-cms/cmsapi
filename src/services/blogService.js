@@ -166,6 +166,7 @@ const deleteBlog = async (id) => {
     throw new ApiError(404, "Blog not found");
   }
 
+  await translationService.removeEntityTranslations("Blog", id);
   return { _id: blog._id, slug: blog.slug };
 };
 
@@ -226,21 +227,35 @@ const publicBlog = async (blog, language) => {
     seo: pickSeo({ [language.code]: selected.seo, en: fallback.seo }, language.code),
   };
   const resolved = await translationService.resolveContent(locale, language.code);
-  const category = blog.category
-    ? {
-        slug: blog.category.slug,
-        name: blogCategoryService.localizedText(
-          await translationService.resolveContent(blog.category.name || {}, language.code),
-          language.code
-        ),
-      }
-    : null;
+  const [overlaid] = await translationService.resolveMany({
+    entityType: "Blog",
+    documents: [{ _id: blog._id, title: resolved.title, excerpt: resolved.excerpt, content: resolved.content }],
+    languageCode: language.code,
+  });
+  let categoryName = blog.category
+    ? blogCategoryService.localizedText(
+        await translationService.resolveContent(blog.category.name || {}, language.code),
+        language.code
+      )
+    : "";
+
+  if (blog.category?._id) {
+    const [categoryCopy] = await translationService.resolveMany({
+      entityType: "BlogCategory",
+      documents: [{ _id: blog.category._id, name: categoryName }],
+      languageCode: language.code,
+      translatableFields: ["name"],
+    });
+    categoryName = categoryCopy.name;
+  }
+
+  const category = blog.category ? { slug: blog.category.slug, name: categoryName } : null;
 
   return {
-    title: resolved.title,
+    title: overlaid.title,
     slug: blog.slug,
-    excerpt: resolved.excerpt,
-    content: resolved.content,
+    excerpt: overlaid.excerpt,
+    content: overlaid.content,
     featuredImage: blog.featuredImage || "",
     gallery: blog.gallery || [],
     category,
@@ -250,7 +265,7 @@ const publicBlog = async (blog, language) => {
     publishedAt: blog.publishedAt,
     language: language.code,
     direction: language.direction,
-    fallbackLanguage: language.code === "en" ? null : "en",
+    fallbackLanguage: language.isDefault ? null : language.fallbackCode || "en",
     seo: resolved.seo,
   };
 };

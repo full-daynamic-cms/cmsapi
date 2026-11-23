@@ -1,5 +1,6 @@
 const Joi = require("joi");
 const ApiError = require("../utils/ApiError");
+const { LANGUAGE_PATTERN } = require("../config/cms");
 const { SECTION_KEYS, SECTION_DEFINITIONS, isAllowedSectionKey } = require("../config/sectionConfig");
 
 const SERVER_FIELDS = ["_id", "id", "__v", "createdAt", "updatedAt"];
@@ -254,10 +255,25 @@ const validateStatus = (body) => {
   return value;
 };
 
+const validatePublicQuery = (query) => {
+  const { error, value } = Joi.object({
+    lang: Joi.string().trim().lowercase().pattern(LANGUAGE_PATTERN),
+  })
+    .unknown(false)
+    .validate(query || {}, { abortEarly: false, stripUnknown: true, convert: true });
+
+  if (error) {
+    throwValidationError(error);
+  }
+
+  return value;
+};
+
 module.exports = {
   assertSectionKey,
   validateCreate,
   validateUpdate,
   validateReorder,
   validateStatus,
+  validatePublicQuery,
 };

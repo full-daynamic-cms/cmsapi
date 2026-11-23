@@ -8,6 +8,7 @@ const {
   validateUpdate,
   validateReorder,
   validateStatus,
+  validatePublicQuery,
 } = require("../validators/landingPageValidator");
 
 const adminRouter = express.Router();
@@ -42,6 +43,6 @@ adminRouter.patch(
   controller.updateSectionStatus
 );
 
-publicRouter.get("/", controller.getPublicLandingPage);
+publicRouter.get("/", validate((req) => validatePublicQuery(req.query)), controller.getPublicLandingPage);
 
 module.exports = { adminRouter, publicRouter };

@@ -150,6 +150,7 @@ const deleteSection = async (id, { force = false } = {}) => {
   }
 
   await Section.deleteOne({ _id: id });
+  await translationService.removeEntityTranslations("Section", id);
   return present(section);
 };
 
@@ -221,6 +222,7 @@ const duplicateSection = async (id, { name, assignToPage } = {}, userId) => {
     createdBy: userId || null,
     updatedBy: userId || null,
   });
+  await translationService.copyEntityTranslations("Section", source._id, copy._id, userId);
 
   if (assignToPage) {
     const page = await Page.findById(assignToPage);

@@ -83,6 +83,8 @@ const deleteSection = async (sectionKey) => {
   }
 
   await deleteManagedImages(removed);
+  const translationService = require("./translationService");
+  await translationService.removeEntityTranslations("LandingPage", section._id);
   return section;
 };
 
@@ -127,8 +129,26 @@ const reorderSections = async (sections) => {
   return getSections();
 };
 
-const getPublicLandingPage = async () => {
-  return LandingPage.find({ isActive: true }).sort({ order: 1, sectionKey: 1 }).lean();
+const getPublicLandingPage = async (requestedLanguage) => {
+  const sections = await LandingPage.find({ isActive: true }).sort({ order: 1, sectionKey: 1 }).lean();
+
+  if (!requestedLanguage) {
+    return sections;
+  }
+
+  const settingsService = require("./settingsService");
+  const translationService = require("./translationService");
+  const { language } = await settingsService.resolveRequestedLanguage(requestedLanguage);
+
+  if (language.isDefault) {
+    return sections;
+  }
+
+  return translationService.resolveMany({
+    entityType: "LandingPage",
+    documents: sections,
+    languageCode: language.code,
+  });
 };
 
 module.exports = {

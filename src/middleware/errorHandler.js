@@ -26,6 +26,18 @@ const errorHandler = (err, req, res, next) => {
       return sendError(res, 409, "Landing page section already exists");
     }
 
+    if (keyPattern.entityId) {
+      return sendError(res, 409, "Dynamic translation already exists");
+    }
+
+    if (keyPattern.languageCode && keyPattern.key) {
+      return sendError(res, 409, "Static translation already exists");
+    }
+
+    if (keyPattern.code) {
+      return sendError(res, 409, "Language code already exists");
+    }
+
     if (keyPattern.key || message.includes(".translations ") || message.includes(".translations index")) {
       return sendError(res, 409, "Translation key already exists");
     }

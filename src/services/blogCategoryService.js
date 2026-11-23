@@ -109,6 +109,7 @@ const deleteCategory = async (id, { force = false } = {}) => {
   }
 
   await BlogCategory.deleteOne({ _id: id });
+  await translationService.removeEntityTranslations("BlogCategory", id);
   return present(category);
 };
 
@@ -157,14 +158,25 @@ const listPublicCategories = async (requestedLanguage) => {
     })),
     language
   );
+  const localized = categories.map((category, index) => ({
+    _id: category._id,
+    slug: category.slug,
+    name: localizedText(resolved[index].name, language),
+    description: localizedText(resolved[index].description, language),
+  }));
+  const translated = await translationService.resolveMany({
+    entityType: "BlogCategory",
+    documents: localized,
+    languageCode: language,
+  });
 
   return {
     language,
     direction: described.direction,
-    items: resolved.map((category) => ({
+    items: translated.map((category) => ({
       slug: category.slug,
-      name: localizedText(category.name, language),
-      description: localizedText(category.description, language),
+      name: category.name,
+      description: category.description,
     })),
   };
 };

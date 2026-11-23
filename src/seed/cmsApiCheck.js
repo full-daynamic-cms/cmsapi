@@ -434,6 +434,99 @@ const start = async () => {
     const pages = await request("GET", "/api/admin/pages?page=1&limit=1");
     assert(pages.status === 200 && pages.json.data.pagination.limit === 1 && pages.json.data.pagination.total >= 2, "paginates admin pages");
 
+    const languages = await request("GET", "/api/languages", undefined, { auth: false });
+    assert(
+      languages.status === 200 &&
+        languages.json.data.some((item) => item.code === "en" && item.isDefault && item.direction === "ltr") &&
+        languages.json.data.some((item) => item.code === "ar" && item.direction === "rtl"),
+      "lists the default languages",
+      languages.json
+    );
+    const englishLanguage = languages.json.data.find((item) => item.code === "en");
+    const blockedDefaultDelete = await request("DELETE", `/api/languages/${englishLanguage._id}`);
+    assert(blockedDefaultDelete.status === 400, "refuses to delete the default language");
+    const urdu = await request("POST", "/api/languages", {
+      name: "Urdu",
+      code: "ur",
+      nativeName: "اردو",
+    });
+    assert(urdu.status === 201 && urdu.json.data.direction === "rtl" && urdu.json.data.isDefault === false, "adds a language", urdu.json);
+    const duplicateLanguage = await request("POST", "/api/languages", { name: "Urdu", code: "ur", nativeName: "اردو" });
+    assert(duplicateLanguage.status === 409, "rejects a duplicate language code");
+
+    const saveLabel = await request("POST", "/api/translations/static", {
+      languageCode: "ar",
+      key: "common.save",
+      value: "حفظ",
+    });
+    assert(saveLabel.status === 201 && saveLabel.json.data.value === "حفظ", "creates a static translation", saveLabel.json);
+    const duplicateLabel = await request("POST", "/api/translations/static", {
+      languageCode: "ar",
+      key: "common.save",
+      value: "حفظ",
+    });
+    assert(duplicateLabel.status === 409, "rejects a duplicate static translation");
+    const staticBundle = await request("GET", "/api/translations/static/ar", undefined, { auth: false });
+    assert(
+      staticBundle.status === 200 && staticBundle.json.data.direction === "rtl" && staticBundle.json.data.translations["common.save"] === "حفظ",
+      "returns static translations for a language",
+      staticBundle.json
+    );
+    const staticBulk = await request("POST", "/api/translations/static/bulk", {
+      languageCode: "ar",
+      items: [{ key: "common.cancel", value: "إلغاء" }],
+    });
+    assert(staticBulk.status === 200 && staticBulk.json.data.created === 1, "bulk upserts static translations", staticBulk.json);
+
+    const dynamic = await request("POST", "/api/translations/dynamic", {
+      languageCode: "ar",
+      entityType: "PageSection",
+      field: "content.title",
+      entityId: services.json.data._id,
+      value: "خدماتنا",
+    });
+    assert(dynamic.status === 201 && dynamic.json.data.entityType === "Section", "creates a dynamic translation", dynamic.json);
+    const duplicateDynamic = await request("POST", "/api/translations/dynamic", {
+      languageCode: "ar",
+      entityType: "Section",
+      field: "content.title",
+      entityId: services.json.data._id,
+      value: "خدماتنا",
+    });
+    assert(duplicateDynamic.status === 409, "rejects a duplicate dynamic translation");
+    const defaultDynamic = await request("POST", "/api/translations/dynamic", {
+      languageCode: "en",
+      entityType: "Section",
+      field: "content.title",
+      entityId: services.json.data._id,
+      value: "Our Services",
+    });
+    assert(defaultDynamic.status === 400, "keeps default-language content on the record");
+    const blockedField = await request("POST", "/api/translations/dynamic", {
+      languageCode: "ar",
+      entityType: "Section",
+      field: "content.slug",
+      entityId: services.json.data._id,
+      value: "خدمات",
+    });
+    assert(blockedField.status === 400, "rejects a non-translatable field");
+
+    const englishPage = await request("GET", "/api/public/pages/home?lang=en", undefined, { auth: false });
+    const arabicPage = await request("GET", "/api/public/pages/home?lang=ar", undefined, { auth: false });
+    const urduPage = await request("GET", "/api/public/pages/home?lang=ur", undefined, { auth: false });
+    const englishServices = englishPage.json.data.sections.find((section) => section.type === "services");
+    const arabicServices = arabicPage.json.data.sections.find((section) => section.type === "services");
+    const urduServices = urduPage.json.data.sections.find((section) => section.type === "services");
+    assert(englishServices.content.title === "Updated services", "English page content stays on the record", englishPage.json);
+    assert(arabicServices.content.title === "خدماتنا", "Arabic page content comes from dynamic translations", arabicPage.json);
+    assert(urduServices.content.title === "Updated services", "a missing dynamic translation falls back to the default language", urduPage.json);
+    const coverage = await request("GET", "/api/admin/translations/dynamic?entityType=Section&languageCode=ur&missing=true&page=1&limit=10");
+    assert(
+      coverage.status === 200 && coverage.json.data.items.some((item) => String(item.entityId) === String(services.json.data._id)),
+      "lists content that is missing a translation",
+      coverage.json
+    );
+
     console.log("CMS checks passed.");
   } finally {
     server.closeAllConnections?.();

@@ -6,6 +6,7 @@ const blogCategoryRoutes = require("./blogCategoryRoutes");
 const translationRoutes = require("./translationRoutes");
 const settingsRoutes = require("./settingsRoutes");
 const contactRoutes = require("./contactRoutes");
+const languageRoutes = require("./languageRoutes");
 
 const router = express.Router();
 
@@ -15,6 +16,7 @@ router.use("/blogs", blogRoutes);
 router.use("/blog-categories", blogCategoryRoutes);
 router.use("/translations", translationRoutes);
 router.use("/settings", settingsRoutes);
+router.use("/languages", languageRoutes);
 router.use("/contact", rateLimit({ windowMs: 15 * 60 * 1000, max: 8, name: "contact" }), contactRoutes);
 
 module.exports = router;

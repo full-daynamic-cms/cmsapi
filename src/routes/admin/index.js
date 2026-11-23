@@ -9,6 +9,7 @@ const blogCategoryRoutes = require("./blogCategoryRoutes");
 const mediaRoutes = require("./mediaRoutes");
 const contactRoutes = require("./contactRoutes");
 const settingsRoutes = require("./settingsRoutes");
+const languageRoutes = require("./languageRoutes");
 
 const router = express.Router();
 
@@ -22,5 +23,6 @@ router.use("/blog-categories", blogCategoryRoutes);
 router.use("/media", mediaRoutes);
 router.use("/contact", contactRoutes);
 router.use("/settings", settingsRoutes);
+router.use("/languages", languageRoutes);
 
 module.exports = router;

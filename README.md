@@ -4,7 +4,7 @@ Node.js, Express, and MongoDB API for a construction landing page. Every section
 
 The database stores content only. It does not store React components or HTML templates. The public site reads active sections in `order` and chooses the component from `sectionKey`.
 
-The same API now also includes a website CMS for pages, reusable sections, translations, blogs, media, contact submissions, and settings. The landing-page routes above are unchanged. Interactive Scalar docs are at [http://localhost:5000/docs](http://localhost:5000/docs). The written reference is [CMS API](docs/CMS_API.md).
+The same API now also includes a website CMS for pages, reusable sections, translations, blogs, media, contact submissions, and settings. Languages and both static and dynamic translations are managed in one place. See [Multilingual system](docs/MULTILINGUAL.md). The landing-page routes above are unchanged. Interactive Scalar docs are at [http://localhost:5000/docs](http://localhost:5000/docs). The written reference is [CMS API](docs/CMS_API.md).
 
 ## Architecture
 

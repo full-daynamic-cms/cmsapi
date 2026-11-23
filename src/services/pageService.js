@@ -199,6 +199,7 @@ const deletePage = async (id) => {
     throw new ApiError(404, "Page not found");
   }
 
+  await translationService.removeEntityTranslations("Page", id);
   return { _id: page._id, slug: page.slug, title: page.title };
 };
 
@@ -286,11 +287,26 @@ const composePublicPage = async (page, language, { includeInactive = false, sour
     ? await Section.find({ _id: { $in: ids } }).select("name type content settings status").lean()
     : [];
   const byId = new Map(sections.map((section) => [String(section._id), section]));
+  const included = refs
+    .map((item) => byId.get(String(item.section)))
+    .filter((section) => section && (includeInactive || section.status === "active"));
+  const translatedSections = await translationService.resolveMany({
+    entityType: "Section",
+    documents: included,
+    languageCode: language.code,
+  });
+  const translatedById = new Map(translatedSections.map((section) => [String(section._id), section]));
+  const pageCopy = await translationService.resolve({
+    entityType: "Page",
+    entityId: page._id,
+    document: { title: working.title },
+    languageCode: language.code,
+  });
   const visible = refs
     .map((item) => {
-      const section = byId.get(String(item.section));
+      const section = translatedById.get(String(item.section));
 
-      if (!section || (!includeInactive && section.status !== "active")) {
+      if (!section) {
         return null;
       }
 
@@ -316,7 +332,7 @@ const composePublicPage = async (page, language, { includeInactive = false, sour
   const seo = pickSeo(working.seo || page.seo, language.code);
   const resolved = await translationService.resolveContent(
     {
-      title: working.title,
+      title: pageCopy.title,
       sections: visible,
       seo,
     },
@@ -329,7 +345,7 @@ const composePublicPage = async (page, language, { includeInactive = false, sour
     pageType: page.pageType,
     language: language.code,
     direction: language.direction,
-    fallbackLanguage: language.code === "en" ? null : "en",
+    fallbackLanguage: language.isDefault ? null : language.fallbackCode || "en",
     sections: resolved.sections,
     seo: resolved.seo,
   };
@@ -355,19 +371,26 @@ const listPublicPages = async ({ page, limit, requestedLanguage }) => {
     limit,
     sort: { publishedAt: -1, slug: 1 },
   });
-  const items = [];
-
-  for (const entry of result.items) {
-    const resolved = await translationService.resolveContent(entry.publishedSnapshot?.title || entry.title, language.code);
-    items.push({
-      title: resolved,
-      slug: entry.slug,
-      pageType: entry.pageType,
-      language: language.code,
-      direction: language.direction,
-      publishedAt: entry.publishedAt,
-    });
-  }
+  const copies = await translationService.resolveMany({
+    entityType: "Page",
+    documents: result.items.map((entry) => ({
+      _id: entry._id,
+      title: entry.publishedSnapshot?.title || entry.title,
+    })),
+    languageCode: language.code,
+  });
+  const titles = await translationService.resolveContent(
+    copies.map((entry) => entry.title),
+    language.code
+  );
+  const items = result.items.map((entry, index) => ({
+    title: titles[index],
+    slug: entry.slug,
+    pageType: entry.pageType,
+    language: language.code,
+    direction: language.direction,
+    publishedAt: entry.publishedAt,
+  }));
 
   return { items, pagination: result.pagination };
 };

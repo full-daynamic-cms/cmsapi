@@ -3,7 +3,7 @@ const { sendSuccess } = require("../utils/apiResponse");
 const settingsService = require("../services/settingsService");
 
 const getSettings = asyncHandler(async (req, res) => {
-  const settings = settingsService.presentAdmin(await settingsService.getSettingsDocument());
+  const settings = await settingsService.getAdminSettings();
   return sendSuccess(res, 200, "Settings retrieved successfully", settings);
 });
 

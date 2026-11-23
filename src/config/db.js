@@ -7,9 +7,28 @@ if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
 
+let indexPromise = null;
+
+const ensureIndexes = () => {
+  if (!indexPromise) {
+    indexPromise = (async () => {
+      const Translation = require("../models/Translation");
+      await Translation.ensureTranslationIndexes();
+      const Language = require("../models/Language");
+      await Language.syncIndexes();
+    })().catch((error) => {
+      indexPromise = null;
+      console.error("Translation index sync failed:", error.message);
+    });
+  }
+
+  return indexPromise;
+};
+
 const connectDB = async () => {
   if (mongoose.connection.readyState === 1) {
     cached.conn = mongoose.connection;
+    await ensureIndexes();
     return cached.conn;
   }
 
@@ -34,6 +53,7 @@ const connectDB = async () => {
   }
 
   cached.conn = await cached.promise;
+  await ensureIndexes();
   return cached.conn;
 };
 
