@@ -22,10 +22,6 @@ const errorHandler = (err, req, res, next) => {
       return sendError(res, 409, "Email is already registered");
     }
 
-    if (keyPattern.sectionKey || message.includes("sectionKey")) {
-      return sendError(res, 409, "Landing page section already exists");
-    }
-
     if (keyPattern.entityId) {
       return sendError(res, 409, "Dynamic translation already exists");
     }

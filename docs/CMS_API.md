@@ -4,15 +4,15 @@ Interactive Scalar documentation is served by the API at `/docs`. The OpenAPI do
 
 With the server running, open [http://localhost:5000/docs](http://localhost:5000/docs). Use the Bearer token from `POST /api/auth/login` to try admin requests.
 
-The CMS extends the existing landing-page API. These routes are unchanged:
+Pages are built from reusable sections. Public content is read from a published page.
 
 | Method | Path | Auth |
 | --- | --- | --- |
 | POST | `/api/auth/register` | Public |
 | POST | `/api/auth/login` | Public |
 | GET | `/api/auth/me` | Bearer |
-| GET, POST, PUT, PATCH, DELETE | `/api/landing-page` | Bearer |
-| GET | `/api/public/landing-page` | Public |
+| GET, POST, PUT, DELETE | `/api/admin/pages` and `/api/admin/sections` | Bearer |
+| GET | `/api/public/pages/:slug` | Public |
 | POST, DELETE | `/api/uploads` | Bearer |
 
 Admin CMS routes use the same Bearer token. Public CMS routes never return drafts, author emails, or audit fields.
@@ -384,7 +384,7 @@ Admin `/api/admin/media`. Bearer. Uploads use the existing Cloudinary account an
 | PATCH | `/:id` | `altText`, `folder` |
 | DELETE | `/:id` | `409` when published content uses the file; `?force=true` overrides |
 
-Accepted types: JPEG, PNG, WEBP, GIF, AVIF, PDF, plain text, CSV, DOC, and DOCX. Maximum size is 10MB. The original landing-page image upload remains 5MB and image-only.
+Accepted types: JPEG, PNG, WEBP, GIF, AVIF, PDF, plain text, CSV, DOC, and DOCX. Maximum size is 10MB. `POST /api/uploads` remains a 5MB image-only upload.
 
 `500` when Cloudinary is not configured. `502` when Cloudinary rejects the file. `400` for a rejected type or a file that is too large.
 
@@ -461,20 +461,18 @@ Page SEO, blog SEO, and default SEO use the same fields, stored separately for e
 
 Title and description fields accept translation references. `canonicalUrl`, `ogImage`, and `robots` are plain strings.
 
-## Migration
+## Sample content
 
 ```bash
-npm run migrate:cms
-npm run migrate:cms -- --yes
-npm run migrate:cms -- --yes --force
+npm run seed
+npm run seed -- --force
 ```
 
-The dry run prints the landing sections it would copy. `--yes` creates translation keys from the current English text, reusable sections, and a published `home` page. Arabic values are left empty for an admin to fill in. `--force` updates that copied content. Landing-page documents and `/api/landing-page` stay in place.
+`npm run seed` creates the home, about, services, and contact pages from reusable sections, with Arabic translations for the visible text. `--force` replaces those seeded pages and sections.
 
 ## Tests
 
 ```bash
 npm run check
-npm run test:api
 npm run test:cms
 ```

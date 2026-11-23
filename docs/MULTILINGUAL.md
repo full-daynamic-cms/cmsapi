@@ -1,6 +1,6 @@
 # Multilingual system
 
-English stays on each content record. Every other language is stored in two collections: `languages` and `translations`. Adding a language does not change page, section, blog, or landing-page schemas.
+English stays on each content record. Every other language is stored in two collections: `languages` and `translations`. Adding a language does not change page, section, or blog schemas.
 
 The existing `{ "$t": "home.hero.title" }` dictionary still works. A static translation row for the same key and language overrides that dictionary value. Dynamic translations override the English field only in the API response. They are never written back onto the content document.
 
@@ -40,7 +40,6 @@ Configured in `src/config/translatableFields.js`. IDs, slugs, prices, quantities
 | `Section` | `name`, text inside `content` (including `items`, `questions`, `features`, `slides`) |
 | `Blog` | `title`, `excerpt`, `content` (English source is `locales.en`) |
 | `BlogCategory` | `name`, `description` |
-| `LandingPage` | `title`, `subtitle`, `description`, `button.text`, item text, selected settings |
 | `WebsiteSettings` | `websiteName`, `contact.address`, `maintenanceMessage`, text in `header` and `footer` |
 
 ## API
@@ -133,9 +132,8 @@ Pass `lang` on the existing public routes:
 - `GET /api/public/blogs/:slug?lang=ar`
 - `GET /api/public/blog-categories?lang=ar`
 - `GET /api/public/settings?lang=ar`
-- `GET /api/public/landing-page?lang=ar`
 
-`lang` is optional on the landing page. Omitting it returns the stored documents exactly as before. English, or whichever language is the default, returns the stored fields. Another language replaces configured text fields when a dynamic translation exists, then resolves `{ "$t": "key" }` references. A missing translation falls back to the default-language value.
+English, or whichever language is the default, returns the stored fields. Another language replaces configured text fields when a dynamic translation exists, then resolves `{ "$t": "key" }` references. A missing translation falls back to the default-language value.
 
 Blog `locales.ar` and category `{ "ar": "..." }` values still work. A dynamic translation for the same field wins.
 
@@ -193,4 +191,4 @@ Review the report before removing any old fields. Do that in a later change, aft
 
 ## Tests
 
-`npm run test:cms` covers English, Arabic, a new language, missing translations, fallback, static bulk upsert, duplicate protection, and the existing landing-page CMS flows. It needs MongoDB on `127.0.0.1:27017` and uses the database `construction_site_cms_cms_test`.
+`npm run test:cms` covers English, Arabic, a new language, missing translations, fallback, static bulk upsert, duplicate protection, and the page and section flows. It needs MongoDB on `127.0.0.1:27017` and uses the database `construction_site_cms_cms_test`.

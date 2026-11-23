@@ -4,7 +4,7 @@ const ApiError = require("../utils/ApiError");
 let configured = false;
 
 const getFolder = () => {
-  const folder = (process.env.CLOUDINARY_FOLDER || "landing-page").trim().replace(/^\/+|\/+$/g, "");
+  const folder = (process.env.CLOUDINARY_FOLDER || "cms").trim().replace(/^\/+|\/+$/g, "");
 
   if (!/^[a-zA-Z0-9/_-]+$/.test(folder)) {
     throw new ApiError(500, "CLOUDINARY_FOLDER is invalid");

@@ -342,7 +342,7 @@ const deleteImage = async ({ publicId, url }) => {
   const resolved = url ? resolveManagedId(url, publicId) : isManagedPublicId(publicId) ? publicId : null;
 
   if (!resolved) {
-    throw new ApiError(400, "A landing page Cloudinary image is required");
+    throw new ApiError(400, "A managed Cloudinary image is required");
   }
 
   await deleteManagedImages([resolved]);

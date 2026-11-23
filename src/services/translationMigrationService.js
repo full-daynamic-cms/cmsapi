@@ -49,7 +49,6 @@ const migrateLegacyTranslations = async ({ dryRun = true, splitStatic = false } 
   const Section = require("../models/Section");
   const Blog = require("../models/Blog");
   const BlogCategory = require("../models/BlogCategory");
-  const LandingPage = require("../models/LandingPage");
   const WebsiteSettings = require("../models/WebsiteSettings");
   const defaultLanguage = await languageService.defaultCode();
   const planned = [];
@@ -70,12 +69,11 @@ const migrateLegacyTranslations = async ({ dryRun = true, splitStatic = false } 
     groups[entry.entityType || entry.type] = (groups[entry.entityType || entry.type] || 0) + 1;
   };
 
-  const [pages, sections, blogs, categories, landing, settings, dictionaries] = await Promise.all([
+  const [pages, sections, blogs, categories, settings, dictionaries] = await Promise.all([
     Page.find().lean(),
     Section.find().lean(),
     Blog.find().lean(),
     BlogCategory.find().lean(),
-    LandingPage.find().lean(),
     WebsiteSettings.find().lean(),
     Translation.find({ $or: [{ type: "dictionary" }, { type: { $exists: false } }] }).select("key translations").lean(),
   ]);
@@ -100,7 +98,6 @@ const migrateLegacyTranslations = async ({ dryRun = true, splitStatic = false } 
 
   scanArabicFields(pages, "Page");
   scanArabicFields(sections, "Section");
-  scanArabicFields(landing, "LandingPage");
   scanArabicFields(settings, "WebsiteSettings");
 
   for (const blog of blogs) {

@@ -1,8 +1,9 @@
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/ApiError");
 const { sendSuccess } = require("../utils/apiResponse");
-const { isAllowedSectionKey } = require("../config/sectionConfig");
 const mediaService = require("../services/mediaService");
+
+const SECTION_FOLDER = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 const uploadImage = asyncHandler(async (req, res) => {
   if (!req.file) {
@@ -11,7 +12,7 @@ const uploadImage = asyncHandler(async (req, res) => {
 
   const sectionKey = typeof req.body.sectionKey === "string" ? req.body.sectionKey.trim().toLowerCase() : "";
 
-  if (sectionKey && !isAllowedSectionKey(sectionKey)) {
+  if (sectionKey && (sectionKey.length > 40 || !SECTION_FOLDER.test(sectionKey))) {
     throw new ApiError(400, "Invalid section key");
   }
 

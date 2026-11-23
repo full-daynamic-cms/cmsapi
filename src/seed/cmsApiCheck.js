@@ -66,19 +66,6 @@ const start = async () => {
     const locked = await request("GET", "/api/admin/pages", undefined, { auth: false });
     assert(locked.status === 401, "admin CMS routes require authentication");
 
-    const landing = await request("POST", "/api/landing-page", {
-      sectionKey: "hero",
-      sectionName: "Hero",
-      order: 1,
-      title: "Building spaces that last",
-    });
-    assert(landing.status === 201 && landing.json.data.sectionKey === "hero", "existing landing page create still works");
-    const publicLanding = await request("GET", "/api/public/landing-page", undefined, { auth: false });
-    assert(
-      publicLanding.status === 200 && publicLanding.json.data.some((section) => section.sectionKey === "hero"),
-      "existing public landing page still returns active sections"
-    );
-
     const duplicateKey = await request("POST", "/api/admin/translations", {
       key: "home.hero.title",
       translations: { en: "Welcome to Our Company", ar: "مرحباً بكم في شركتنا" },

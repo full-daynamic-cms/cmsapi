@@ -119,33 +119,6 @@ const operation = ({
   responses,
 });
 
-const landingSection = {
-  type: "object",
-  properties: {
-    _id: id,
-    sectionKey: { type: "string", example: "hero" },
-    sectionName: { type: "string", example: "Hero" },
-    order: { type: "integer", example: 1 },
-    title: { type: "string" },
-    subtitle: { type: "string" },
-    description: { type: "string" },
-    image: { type: "string" },
-    imagePublicId: { type: "string" },
-    button: {
-      type: "object",
-      properties: {
-        text: { type: "string" },
-        link: { type: "string" },
-      },
-    },
-    items: { type: "array", items: { type: "object", additionalProperties: true } },
-    settings: { type: "object", additionalProperties: true },
-    isActive: { type: "boolean" },
-    createdAt: { type: "string", format: "date-time" },
-    updatedAt: { type: "string", format: "date-time" },
-  },
-};
-
 const section = {
   type: "object",
   properties: {
@@ -501,156 +474,11 @@ const paths = {
       },
     }),
   },
-  "/api/landing-page/config": {
-    get: operation({
-      tag: "Landing page",
-      summary: "Editor config",
-      description: "Field definitions the admin editor uses for the built-in landing sections.",
-      auth: true,
-      responses: {
-        200: success("Landing page editor config fetched successfully", { type: "array", items: { type: "object", additionalProperties: true } }),
-        401: ref("Unauthorized"),
-      },
-    }),
-  },
-  "/api/landing-page/reorder": {
-    patch: operation({
-      tag: "Landing page",
-      summary: "Reorder landing sections",
-      auth: true,
-      body: jsonBody({
-        type: "object",
-        required: ["sections"],
-        properties: {
-          sections: {
-            type: "array",
-            items: {
-              type: "object",
-              required: ["sectionKey", "order"],
-              properties: { sectionKey: { type: "string" }, order: { type: "integer", minimum: 0 } },
-            },
-          },
-        },
-      }),
-      responses: {
-        200: success("Landing page sections reordered successfully", { type: "array", items: landingSection }),
-        400: ref("BadRequest"),
-        401: ref("Unauthorized"),
-        404: ref("NotFound"),
-      },
-    }),
-  },
-  "/api/landing-page": {
-    get: operation({
-      tag: "Landing page",
-      summary: "List landing sections",
-      description: "Every landing section, including inactive ones, sorted by order.",
-      auth: true,
-      responses: {
-        200: success("Landing page sections fetched successfully", { type: "array", items: landingSection }),
-        401: ref("Unauthorized"),
-      },
-    }),
-    post: operation({
-      tag: "Landing page",
-      summary: "Create a landing section",
-      description: "Accepts JSON or multipart form data. `sectionKey` must be unique. Built-in keys such as `hero` keep their required fields.",
-      auth: true,
-      body: {
-        required: true,
-        content: {
-          "application/json": { schema: landingSection },
-          "multipart/form-data": {
-            schema: {
-              type: "object",
-              properties: {
-                sectionKey: { type: "string" },
-                sectionName: { type: "string" },
-                order: { type: "integer" },
-                title: { type: "string" },
-                image: { type: "string", format: "binary" },
-              },
-            },
-          },
-        },
-      },
-      responses: {
-        201: success("Landing page section created successfully", landingSection),
-        400: ref("BadRequest"),
-        401: ref("Unauthorized"),
-        409: ref("Conflict"),
-      },
-    }),
-  },
-  "/api/landing-page/{sectionKey}": {
-    get: operation({
-      tag: "Landing page",
-      summary: "Get a landing section",
-      auth: true,
-      parameters: [{ $ref: "#/components/parameters/SectionKey" }],
-      responses: {
-        200: success("Landing page section fetched successfully", landingSection),
-        400: ref("BadRequest"),
-        401: ref("Unauthorized"),
-        404: ref("NotFound"),
-      },
-    }),
-    put: operation({
-      tag: "Landing page",
-      summary: "Update a landing section",
-      description: "Send the fields to change. `sectionKey` cannot be changed.",
-      auth: true,
-      parameters: [{ $ref: "#/components/parameters/SectionKey" }],
-      body: jsonBody(landingSection),
-      responses: {
-        200: success("Landing page section updated successfully", landingSection),
-        400: ref("BadRequest"),
-        401: ref("Unauthorized"),
-        404: ref("NotFound"),
-      },
-    }),
-    delete: operation({
-      tag: "Landing page",
-      summary: "Delete a landing section",
-      auth: true,
-      parameters: [{ $ref: "#/components/parameters/SectionKey" }],
-      responses: {
-        200: success("Landing page section deleted successfully", landingSection),
-        401: ref("Unauthorized"),
-        404: ref("NotFound"),
-      },
-    }),
-  },
-  "/api/landing-page/{sectionKey}/status": {
-    patch: operation({
-      tag: "Landing page",
-      summary: "Set landing section status",
-      description: "Omit `isActive` to toggle the current value.",
-      auth: true,
-      parameters: [{ $ref: "#/components/parameters/SectionKey" }],
-      body: jsonBody({ type: "object", properties: { isActive: { type: "boolean" } } }),
-      responses: {
-        200: success("Landing page section status updated successfully", landingSection),
-        401: ref("Unauthorized"),
-        404: ref("NotFound"),
-      },
-    }),
-  },
-  "/api/public/landing-page": {
-    get: operation({
-      tag: "Landing page",
-      summary: "Public landing page",
-      description: "Active landing sections only, sorted by order. This is the original public landing endpoint.",
-      responses: {
-        200: success("Landing page fetched successfully", { type: "array", items: landingSection }),
-      },
-    }),
-  },
   "/api/uploads": {
     post: operation({
       tag: "Uploads",
-      summary: "Upload a landing image",
-      description: "JPEG, PNG, WEBP, GIF, or AVIF up to 5MB. Stored in Cloudinary.",
+      summary: "Upload an image",
+      description: "JPEG, PNG, WEBP, GIF, or AVIF up to 5MB. Stored in Cloudinary. Optional `sectionKey` chooses a folder such as `hero`.",
       auth: true,
       body: {
         required: true,
@@ -1581,21 +1409,18 @@ module.exports = {
     title: "Construction Site CMS API",
     version: "1.0.0",
     description: [
-      "Landing-page API and website CMS.",
+      "Website CMS for pages, reusable sections, translations, blogs, media, contact, and settings.",
       "",
       "Authenticate admin requests with `Authorization: Bearer <token>` from `POST /api/auth/login`.",
       "",
       "Translation references use `{ \"$t\": \"home.hero.title\" }`. Public pages and blogs resolve those references, then apply dynamic translations, and fall back to the default language. Plain strings, URLs, and image paths are never treated as keys.",
-      "",
-      "The original landing-page routes remain available alongside the CMS.",
     ].join("\n"),
   },
   servers: [{ url: "/", description: "Current server" }],
   tags: [
     { name: "Health" },
     { name: "Auth" },
-    { name: "Landing page", description: "Original single-page section API." },
-    { name: "Uploads", description: "Landing-page Cloudinary image uploads." },
+    { name: "Uploads", description: "Cloudinary image uploads." },
     { name: "Pages" },
     { name: "Sections" },
     { name: "Translations" },
@@ -1608,8 +1433,7 @@ module.exports = {
   ],
   "x-tagGroups": [
     { name: "System", tags: ["Health", "Auth"] },
-    { name: "Landing page", tags: ["Landing page", "Uploads"] },
-    { name: "Website", tags: ["Pages", "Sections", "Translations", "Languages", "Settings"] },
+    { name: "Website", tags: ["Pages", "Sections", "Translations", "Languages", "Settings", "Uploads"] },
     { name: "Blog", tags: ["Blogs", "Blog categories"] },
     { name: "Library", tags: ["Media", "Contact"] },
   ],
@@ -1624,7 +1448,6 @@ module.exports = {
     parameters: {
       Id: { name: "id", in: "path", required: true, schema: id },
       Slug: { name: "slug", in: "path", required: true, schema: slug },
-      SectionKey: { name: "sectionKey", in: "path", required: true, schema: { type: "string", example: "hero" } },
       TranslationKey: { name: "key", in: "path", required: true, schema: { type: "string", example: "home.hero.title" } },
       Page: { name: "page", in: "query", schema: { type: "integer", minimum: 1, default: 1 } },
       Limit: { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 10 } },

@@ -25,7 +25,6 @@ const modelFor = (entityType) => {
     Section: () => require("../models/Section"),
     Blog: () => require("../models/Blog"),
     BlogCategory: () => require("../models/BlogCategory"),
-    LandingPage: () => require("../models/LandingPage"),
     WebsiteSettings: () => require("../models/WebsiteSettings"),
   };
 
@@ -51,10 +50,6 @@ const entityLabel = (entityType, doc) => {
 
   if (entityType === "BlogCategory") {
     return (typeof doc.name === "string" ? doc.name : doc.name?.en) || doc.slug || "";
-  }
-
-  if (entityType === "LandingPage") {
-    return doc.sectionName || doc.sectionKey || "";
   }
 
   if (entityType === "WebsiteSettings") {
@@ -832,10 +827,6 @@ const searchFilter = (entityType, search) => {
 
   if (entityType === "BlogCategory") {
     return { $or: [{ slug: regex }, { "name.en": regex }] };
-  }
-
-  if (entityType === "LandingPage") {
-    return { $or: [{ sectionKey: regex }, { sectionName: regex }, { title: regex }] };
   }
 
   return {};

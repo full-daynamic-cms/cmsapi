@@ -52,7 +52,6 @@ const ENTITY_ALIASES = Object.freeze({
   section: "Section",
   blog: "Blog",
   blogcategory: "BlogCategory",
-  landingpage: "LandingPage",
   websitesettings: "WebsiteSettings",
   settings: "WebsiteSettings",
 });
@@ -69,18 +68,6 @@ const ENTITY_FIELDS = Object.freeze({
   ]),
   Blog: Object.freeze(["title", "excerpt", "content"]),
   BlogCategory: Object.freeze(["name", "description"]),
-  LandingPage: Object.freeze([
-    "title",
-    "subtitle",
-    "description",
-    "button.text",
-    ...TEXT_LEAVES.map((leaf) => `items.*.${leaf}`),
-    "items.*.button.text",
-    "settings.copyright",
-    "settings.address",
-    "settings.hours",
-    "settings.announcement",
-  ]),
   WebsiteSettings: Object.freeze([
     "websiteName",
     "contact.address",
