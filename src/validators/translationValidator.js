@@ -41,9 +41,17 @@ const bulkUpdateSchema = Joi.object({
   items: Joi.array().items(bulkUpdateItem).min(1).max(200).required(),
 }).unknown(false);
 
+const importItemSchema = Joi.object({
+  key: translationKey.required(),
+  translations: Joi.object().pattern(/^[a-z]{2,8}$/, Joi.string().allow("").max(20000)).min(1).required(),
+  category: Joi.string().trim().allow("").max(80),
+  description: Joi.string().trim().allow("").max(500),
+  status: Joi.string().valid(...TRANSLATION_STATUSES),
+}).unknown(false);
+
 const importSchema = Joi.object({
   mode: Joi.string().valid("create", "upsert").default("upsert"),
-  items: Joi.array().items(createSchema).min(1).max(200).required(),
+  items: Joi.array().items(importItemSchema).min(1).max(200).required(),
 }).unknown(false);
 
 const listQuery = Joi.object({

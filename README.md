@@ -4,6 +4,8 @@ Node.js, Express, and MongoDB API for a construction landing page. Every section
 
 The database stores content only. It does not store React components or HTML templates. The public site reads active sections in `order` and chooses the component from `sectionKey`.
 
+The same API now also includes a website CMS for pages, reusable sections, translations, blogs, media, contact submissions, and settings. The landing-page routes above are unchanged. Interactive Scalar docs are at [http://localhost:5000/docs](http://localhost:5000/docs). The written reference is [CMS API](docs/CMS_API.md).
+
 ## Architecture
 
 ```text
@@ -12,7 +14,8 @@ src/
 │   ├── db.js
 │   └── sectionConfig.js      # section keys, editor fields, item rules
 ├── models/
-│   └── LandingPage.js        # the only landing-page model
+│   ├── LandingPage.js        # landing-page sections, one document per sectionKey
+│   └── Page.js, Section.js, Translation.js, Blog.js, and the other CMS models
 ├── validators/
 │   └── landingPageValidator.js
 ├── services/
@@ -49,7 +52,9 @@ npm run seed
 npm run dev
 ```
 
-`npm run test:api` exercises every endpoint against a separate database, `construction_site_cms_test`, and deletes that database afterward.
+`npm run test:api` exercises every landing-page endpoint against a separate database, `construction_site_cms_test`, and deletes that database afterward. `npm run test:cms` does the same for the website CMS against `construction_site_cms_cms_test`.
+
+`npm run migrate:cms` copies landing-page sections into the CMS as a published `home` page. It is a dry run until you add `--yes`, and it never deletes the original landing-page documents. `--force` updates CMS records that were copied earlier.
 
 MongoDB must be running at `MONGODB_URI`. With Docker:
 

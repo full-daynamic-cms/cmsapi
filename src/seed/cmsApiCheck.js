@@ -49,6 +49,12 @@ const start = async () => {
   };
 
   try {
+    const spec = await request("GET", "/openapi.json", undefined, { auth: false });
+    assert(spec.status === 200 && spec.json.openapi === "3.0.3" && spec.json.paths["/api/public/pages/{slug}"], "serves the OpenAPI document", spec.json.info);
+    const docsResponse = await fetch(`${base}/docs`);
+    const docsHtml = await docsResponse.text();
+    assert(docsResponse.status === 200 && docsHtml.includes("@scalar/api-reference"), "serves the Scalar reference");
+
     const registered = await request("POST", "/api/auth/register", {
       name: "Site Admin",
       email: "cms-admin@example.com",
@@ -373,6 +379,48 @@ const start = async () => {
       "resolves public settings",
       publicSettings.json
     );
+
+    const exported = await request("GET", "/api/admin/translations/export");
+    assert(exported.status === 200 && exported.json.data.some((item) => item.key === "home.hero.title"), "exports translations");
+    const imported = await request("POST", "/api/admin/translations/import", {
+      mode: "upsert",
+      items: [
+        {
+          key: "home.hero.subtitle",
+          translations: { ar: "نبني حلولاً أفضل" },
+          category: "home",
+          description: "Home hero subtitle",
+        },
+      ],
+    });
+    assert(imported.status === 200 && imported.json.data.updated === 1, "imports translations", imported.json);
+    const filled = await request("GET", "/api/translations/missing?lang=ar");
+    assert(!filled.json.data.items.some((item) => item.key === "home.hero.subtitle"), "clears a translation after import");
+
+    const reordered = await request("PATCH", "/api/admin/sections/reorder", {
+      sections: [
+        { id: hero.json.data._id, order: 2 },
+        { id: services.json.data._id, order: 1 },
+      ],
+    });
+    assert(
+      reordered.status === 200 && reordered.json.data.find((section) => section._id === services.json.data._id).order === 1,
+      "reorders sections",
+      reordered.json
+    );
+
+    const publicCategories = await request("GET", "/api/public/blog-categories?lang=ar", undefined, { auth: false });
+    assert(
+      publicCategories.status === 200 &&
+        publicCategories.json.data.direction === "rtl" &&
+        publicCategories.json.data.items.some((item) => item.slug === "projects" && item.name === "المشاريع"),
+      "lists public categories",
+      publicCategories.json
+    );
+    await request("POST", `/api/admin/blogs/${post.json.data._id}/unpublish`);
+    const unpublished = await request("GET", "/api/public/blogs/first-project?lang=en", undefined, { auth: false });
+    assert(unpublished.status === 404, "unpublish hides a blog");
+    await request("POST", `/api/admin/blogs/${post.json.data._id}/publish`);
 
     await request("PUT", "/api/admin/settings", { maintenanceMode: true });
     const closed = await request("GET", "/api/public/pages/home?lang=en", undefined, { auth: false });

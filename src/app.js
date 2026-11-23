@@ -8,6 +8,7 @@ const authRouter = require("./routes/authRoutes");
 const cmsPublicRouter = require("./routes/public");
 const cmsAdminRouter = require("./routes/admin");
 const translationAliasRouter = require("./routes/translationAliasRoutes");
+const docsRouter = require("./routes/docsRoutes");
 const sanitizeRequest = require("./middleware/sanitize");
 const errorHandler = require("./middleware/errorHandler");
 const { sendError } = require("./utils/apiResponse");
@@ -17,6 +18,7 @@ const app = express();
 app.set("trust proxy", 1);
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
+app.use(docsRouter);
 app.use(sanitizeRequest);
 
 app.use(async (req, res, next) => {
