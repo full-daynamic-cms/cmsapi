@@ -1,0 +1,69 @@
+const { TRANSLATION_STATUSES } = require("../config/cms");
+const { Joi, validateBody, validateQuery, objectId, translationKey, pagination, languageCode } = require("./helpers");
+
+const translationMap = Joi.object()
+  .pattern(/^[a-z]{2,8}$/, Joi.string().allow("").max(20000))
+  .min(1)
+  .required();
+
+const fields = {
+  key: translationKey.required(),
+  translations: translationMap,
+  category: Joi.string().trim().allow("").max(80).default(""),
+  description: Joi.string().trim().allow("").max(500).default(""),
+  status: Joi.string()
+    .valid(...TRANSLATION_STATUSES)
+    .default("active"),
+};
+
+const createSchema = Joi.object(fields).unknown(false);
+
+const updateSchema = Joi.object({
+  key: translationKey,
+  translations: Joi.object().pattern(/^[a-z]{2,8}$/, Joi.string().allow("").max(20000)).min(1),
+  category: Joi.string().trim().allow("").max(80),
+  description: Joi.string().trim().allow("").max(500),
+  status: Joi.string().valid(...TRANSLATION_STATUSES),
+})
+  .min(1)
+  .unknown(false);
+
+const bulkCreateSchema = Joi.object({
+  items: Joi.array().items(createSchema).min(1).max(200).required(),
+}).unknown(false);
+
+const bulkUpdateItem = updateSchema.keys({
+  id: objectId,
+  key: translationKey,
+}).or("id", "key");
+
+const bulkUpdateSchema = Joi.object({
+  items: Joi.array().items(bulkUpdateItem).min(1).max(200).required(),
+}).unknown(false);
+
+const importSchema = Joi.object({
+  mode: Joi.string().valid("create", "upsert").default("upsert"),
+  items: Joi.array().items(createSchema).min(1).max(200).required(),
+}).unknown(false);
+
+const listQuery = Joi.object({
+  ...pagination,
+  search: Joi.string().trim().max(160).allow(""),
+  category: Joi.string().trim().max(80).allow(""),
+  status: Joi.string().valid(...TRANSLATION_STATUSES),
+  lang: languageCode,
+}).unknown(false);
+
+const languageQuery = Joi.object({
+  lang: languageCode,
+}).unknown(false);
+
+module.exports = {
+  validateCreateTranslation: (body) => validateBody(createSchema, body),
+  validateUpdateTranslation: (body) => validateBody(updateSchema, body),
+  validateBulkCreateTranslations: (body) => validateBody(bulkCreateSchema, body),
+  validateBulkUpdateTranslations: (body) => validateBody(bulkUpdateSchema, body),
+  validateImportTranslations: (body) => validateBody(importSchema, body),
+  validateListTranslations: (query) => validateQuery(listQuery, query),
+  validateLanguageQuery: (query) => validateQuery(languageQuery, query),
+};
