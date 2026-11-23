@@ -27,6 +27,8 @@ const TEXT_LEAVES = [
   "text",
   "quote",
   "role",
+  "category",
+  "group",
 ];
 
 const nestedLeaves = (prefix, collections) => {
@@ -57,7 +59,14 @@ const ENTITY_ALIASES = Object.freeze({
 
 const ENTITY_FIELDS = Object.freeze({
   Page: Object.freeze(["title"]),
-  Section: Object.freeze(["name", ...nestedLeaves("content", ["items", "questions", "features", "slides", "stats", "members"])]),
+  Section: Object.freeze([
+    "name",
+    ...nestedLeaves("content", ["items", "questions", "features", "slides", "stats", "members"]),
+    "settings.copyright",
+    "settings.address",
+    "settings.hours",
+    "settings.announcement",
+  ]),
   Blog: Object.freeze(["title", "excerpt", "content"]),
   BlogCategory: Object.freeze(["name", "description"]),
   LandingPage: Object.freeze([

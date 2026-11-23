@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed": "node src/seed/seedLandingPage.js",
+    "seed:pages": "node src/seed/seedPages.js",
     "check": "node src/seed/checkSeed.js",
     "test:api": "node src/seed/apiCheck.js",
     "test:cms": "node src/seed/cmsApiCheck.js",
