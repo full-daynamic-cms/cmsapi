@@ -77,7 +77,7 @@ const pageBody = {
     action: { type: "string", enum: ["publish", "unpublish", "delete", "sections"] },
     title: { type: "string", example: "Home" },
     slug: { type: "string", example: "home" },
-    pageType: { type: "string", enum: ["home", "about", "services", "contact", "blogs", "faq", "privacy", "terms", "custom"], example: "home" },
+    pageType: { type: "string", enum: ["home", "about", "services", "contact", "faq", "privacy", "terms", "custom"], example: "home" },
     status: { type: "string", enum: ["draft", "published", "archived"], example: "published" },
     sections: {
       type: "array",
@@ -130,47 +130,6 @@ const sectionBody = {
   },
 };
 
-const blogBody = {
-  type: "object",
-  properties: {
-    id: { type: "string" },
-    action: { type: "string", enum: ["publish", "unpublish", "delete"] },
-    slug: { type: "string", example: "first-project" },
-    category: { type: "string", example: "projects" },
-    tags: { type: "array", items: { type: "string" }, example: ["construction"] },
-    featured: { type: "boolean", example: true },
-    status: { type: "string", enum: ["draft", "published", "archived"] },
-    locales: {
-      type: "object",
-      example: {
-        en: { title: "First project", excerpt: "A commercial build", content: "<p>English body</p>" },
-        ar: { title: "المشروع الأول", excerpt: "بناء تجاري", content: "<p>النص العربي</p>" },
-      },
-    },
-  },
-  example: {
-    slug: "first-project",
-    category: "projects",
-    tags: ["construction"],
-    featured: true,
-    locales: { en: { title: "First project", excerpt: "A commercial build", content: "<p>English body</p>" } },
-  },
-};
-
-const categoryBody = {
-  type: "object",
-  properties: {
-    id: { type: "string" },
-    action: { type: "string", enum: ["delete"] },
-    force: { type: "boolean" },
-    name: { type: "object", example: { en: "Projects", ar: "المشاريع" } },
-    slug: { type: "string", example: "projects" },
-    description: { type: "object", example: { en: "Project stories" } },
-    status: { type: "string", enum: ["active", "inactive"], example: "active" },
-  },
-  example: { name: { en: "Projects", ar: "المشاريع" }, slug: "projects", description: { en: "Project stories" }, status: "active" },
-};
-
 const translationBody = {
   type: "object",
   properties: {
@@ -183,7 +142,7 @@ const translationBody = {
     description: { type: "string" },
     languageCode: { type: "string", example: "ar" },
     value: { type: "string", example: "نبني مساحات تدوم" },
-    entityType: { type: "string", enum: ["Page", "Section", "Blog", "BlogCategory", "WebsiteSettings"], example: "Section" },
+    entityType: { type: "string", enum: ["Page", "Section", "WebsiteSettings"], example: "Section" },
     entityId: { type: "string", example: id },
     field: { type: "string", example: "content.title" },
     mode: { type: "string", enum: ["create", "upsert"] },
@@ -276,7 +235,7 @@ module.exports = {
     title: "Construction Site CMS API",
     version: "1.0.0",
     description: [
-      "Each model has its own request body. Pick Page, Section, Blog, or another model in the sidebar.",
+      "Each model has its own request body. Pick Page or Section for site content.",
       "",
       "The server address is still `/api/admin/page` or `/api/admin/section`. Leave `id` out of the body to add a record. Send `id` to update it.",
     ].join("\n"),
@@ -285,8 +244,6 @@ module.exports = {
   tags: [
     { name: "Page" },
     { name: "Section" },
-    { name: "Blog" },
-    { name: "Blog category" },
     { name: "Translation" },
     { name: "Language" },
     { name: "Settings" },
@@ -297,7 +254,7 @@ module.exports = {
     { name: "Health" },
   ],
   "x-tagGroups": [
-    { name: "Content", tags: ["Page", "Section", "Blog", "Blog category", "Translation", "Language", "Settings", "Media", "Contact"] },
+    { name: "Content", tags: ["Page", "Section", "Translation", "Language", "Settings", "Media", "Contact"] },
     { name: "System", tags: ["Auth", "Uploads", "Health"] },
   ],
   components: {
@@ -346,20 +303,6 @@ module.exports = {
     "/api/admin/section": {
       get: adminRead("Section", "Read a section", [recordId, query("type", { type: "string", example: "hero" }), query("status", { type: "string" }), query("search", { type: "string" }), ...paging]),
       put: adminWrite("Section", "Add or update a section", sectionBody),
-    },
-    "/api/public/blog": {
-      get: read("Blog", "Read a published blog", [query("slug", { type: "string", example: "first-project" }), query("view", { type: "string", enum: ["related"] }), lang, query("category", { type: "string" }), query("featured", { type: "boolean" }), ...paging]),
-    },
-    "/api/admin/blog": {
-      get: adminRead("Blog", "Read a stored blog", [recordId, query("slug", { type: "string" }), query("view", { type: "string", enum: ["preview"] }), lang, query("status", { type: "string" }), query("search", { type: "string" }), ...paging]),
-      put: adminWrite("Blog", "Add or update a blog", blogBody),
-    },
-    "/api/public/blog-category": {
-      get: read("Blog category", "Read published categories", [lang]),
-    },
-    "/api/admin/blog-category": {
-      get: adminRead("Blog category", "Read a category", [recordId, query("search", { type: "string" }), query("status", { type: "string" }), ...paging]),
-      put: adminWrite("Blog category", "Add or update a category", categoryBody),
     },
     "/api/public/translation": {
       get: read("Translation", "Read a translation bundle or one key", [lang, query("key", { type: "string", example: "home.hero.title" })]),

@@ -6,7 +6,7 @@ With the server running, open [http://localhost:5000/docs](http://localhost:5000
 
 Pages are built from reusable sections. Public content is read from a published page.
 
-The content API is four routes. `model` is `page`, `section`, `blog`, `blog-category`, `translation`, `language`, `media`, `contact`, or `settings`.
+The content API is four routes. Site content is a page made of sections. `model` is `page`, `section`, `translation`, `language`, `media`, `contact`, or `settings`.
 
 | Method | Path | Auth | Use |
 | --- | --- | --- | --- |
@@ -84,7 +84,7 @@ GET /api/admin/page?view=preview&id=665f0a2b9c0e4a0012ab34cd&lang=en
 GET /api/admin/page?page=1&limit=10&status=published&search=home
 ```
 
-`pageType` is `home`, `about`, `services`, `contact`, `blogs`, `faq`, `privacy`, `terms`, or `custom`. `status` is `draft`, `published`, or `archived`.
+`pageType` is `home`, `about`, `services`, `contact`, `faq`, `privacy`, `terms`, or `custom`. `status` is `draft`, `published`, or `archived`.
 
 ### Section
 
@@ -133,76 +133,6 @@ Send `type` again when `content` changes, so the section shape stays valid.
 
 Read it: `GET /api/admin/section?id=665f0a2b9c0e4a0012ab34cd` or `GET /api/admin/section?type=hero&status=active&page=1&limit=10`.
 
-### Blog
-
-Add a post. `PUT /api/admin/blog`
-
-```json
-{
-  "slug": "first-project",
-  "category": "projects",
-  "tags": ["construction"],
-  "featured": true,
-  "locales": {
-    "en": { "title": "First project", "excerpt": "A commercial build", "content": "<p>English body</p>" },
-    "ar": { "title": "المشروع الأول", "excerpt": "بناء تجاري", "content": "<p>النص العربي</p>" }
-  }
-}
-```
-
-Update a post.
-
-```json
-{ "id": "665f0a2b9c0e4a0012ab34cd", "featured": false }
-```
-
-```json
-{ "action": "publish", "id": "665f0a2b9c0e4a0012ab34cd" }
-```
-
-```json
-{ "action": "unpublish", "id": "665f0a2b9c0e4a0012ab34cd" }
-```
-
-```json
-{ "action": "delete", "id": "665f0a2b9c0e4a0012ab34cd" }
-```
-
-Read it:
-
-```text
-GET /api/public/blog?slug=first-project&lang=ar
-GET /api/public/blog?lang=en&category=projects&featured=true&page=1&limit=10
-GET /api/public/blog?slug=first-project&view=related&lang=en
-GET /api/admin/blog?id=665f0a2b9c0e4a0012ab34cd
-GET /api/admin/blog?view=preview&id=665f0a2b9c0e4a0012ab34cd&lang=en
-```
-
-### Blog category
-
-Add a category. `PUT /api/admin/blog-category`
-
-```json
-{
-  "name": { "en": "Projects", "ar": "المشاريع" },
-  "slug": "projects",
-  "description": { "en": "Project stories" },
-  "status": "active"
-}
-```
-
-Update a category.
-
-```json
-{ "id": "665f0a2b9c0e4a0012ab34cd", "name": { "en": "Selected projects" } }
-```
-
-```json
-{ "action": "delete", "id": "665f0a2b9c0e4a0012ab34cd", "force": true }
-```
-
-Read it: `GET /api/public/blog-category?lang=ar` and `GET /api/admin/blog-category?id=665f0a2b9c0e4a0012ab34cd`.
-
 ### Language
 
 Add a language. `PUT /api/admin/language`
@@ -227,7 +157,7 @@ Read it: `GET /api/public/language`, `GET /api/public/language?code=ar`, and `GE
 
 ### Translation
 
-A dictionary row is a reusable key. A static row is one interface word. A dynamic row is the Arabic (or other) text for one field on one page, section, blog, category, or settings record. English stays on the content record, so do not send a dynamic translation for the default language.
+A dictionary row is a reusable key. A static row is one interface word. A dynamic row is the Arabic (or other) text for one field on one page, section, or settings record. English stays on the content record, so do not send a dynamic translation for the default language.
 
 Add a dictionary key. `PUT /api/admin/translation`
 
@@ -269,7 +199,7 @@ Add a section translation.
 }
 ```
 
-`entityType` can be `Page`, `Section`, `Blog`, `BlogCategory`, or `WebsiteSettings`. `PageSection` is accepted and stored as `Section`.
+`entityType` can be `Page`, `Section`, or `WebsiteSettings`. `PageSection` is accepted and stored as `Section`.
 
 Update it.
 
@@ -449,7 +379,7 @@ A page has a working copy and a published snapshot.
 - Section content is live. A section shared by several pages updates all of them immediately.
 - `POST /sections/:id/duplicate` copies the section and its translation keys so later edits stay independent.
 - Inactive sections are left out of public pages.
-- `maintenanceMode` makes public pages, blogs, categories, and contact return `503`. Settings and translations stay available.
+- `maintenanceMode` makes public pages and contact return `503`. Settings and translations stay available.
 
 ## Public pages
 
@@ -550,7 +480,7 @@ Create body:
 }
 ```
 
-`title` is a string or a translation reference. `slug` is unique. `pageType` is `home`, `about`, `services`, `contact`, `blogs`, `faq`, `privacy`, `terms`, or `custom`. `status` is `draft`, `published`, or `archived`. Section ids cannot repeat on one page. Publishing with `status: "published"` on create publishes immediately.
+`title` is a string or a translation reference. `slug` is unique. `pageType` is `home`, `about`, `services`, `contact`, `faq`, `privacy`, `terms`, or `custom`. `status` is `draft`, `published`, or `archived`. Section ids cannot repeat on one page. Publishing with `status: "published"` on create publishes immediately.
 
 Errors: `400` validation, `401` missing token, `404` page or section, `409` duplicate slug.
 
@@ -612,7 +542,7 @@ Admin reads and writes use `/api/admin/translation` and require Bearer auth. Add
 | PUT | `/api/admin/translation` | `{ "id", ...fields }`; language values are merged | `200` |
 | PUT | `/api/admin/translation` | `{ "action": "delete", "id" }` | `200` |
 | GET | `/api/admin/translation?view=missing&lang=ar` | | `200` active keys with an empty value |
-| GET | `/api/admin/translation?view=unused` | | `200` keys not referenced by pages, sections, blogs, categories, or settings |
+| GET | `/api/admin/translation?view=unused` | | `200` keys not referenced by pages, sections, or settings |
 | GET | `/api/admin/translation?view=export` | | `200` JSON array |
 | PUT | `/api/admin/translation` | `{ "action": "import", "mode": "upsert", "items": [] }` | `200` `{ "created", "updated" }` |
 | GET | `/api/admin/translation?key=` | includes inactive | `200` |
@@ -630,106 +560,6 @@ Create body:
 ```
 
 `mode` is `create` or `upsert`. Upsert merges language values and does not wipe omitted fields. Duplicate keys return `409`.
-
-## Blogs
-
-Public:
-
-| Method | Path | Query |
-| --- | --- | --- |
-| GET | `/api/public/blog` | `lang`, `page`, `limit`, `search`, `category` (id or slug), `tag`, `featured` |
-| GET | `/api/public/blog?slug=first-project` | `lang` |
-| GET | `/api/public/blog?slug=first-project&view=related` | `lang`, up to 3 published posts in the same category |
-
-List items omit the body. The detail response is one language:
-
-```json
-{
-  "title": "المشروع الأول",
-  "slug": "first-project",
-  "excerpt": "بناء تجاري",
-  "content": "<p>النص العربي</p>",
-  "featuredImage": "",
-  "gallery": [],
-  "category": { "slug": "projects", "name": "المشاريع" },
-  "tags": ["construction"],
-  "author": { "name": "Site Admin" },
-  "featured": true,
-  "publishedAt": "2026-11-23T00:00:00.000Z",
-  "language": "ar",
-  "direction": "rtl",
-  "fallbackLanguage": "en",
-  "seo": { "metaTitle": "", "metaDescription": "" }
-}
-```
-
-`content` may be HTML or rich-text JSON. A missing Arabic field falls back to English.
-
-Admin route `/api/admin/blog`. Bearer.
-
-| Method | Path | Notes |
-| --- | --- | --- |
-| GET | `/api/admin/blog` | `page`, `limit`, `search`, `status`, `category`, `tag`, `featured` |
-| PUT | `/api/admin/blog` | create when `id` is omitted |
-| GET | `/api/admin/blog?slug=` | any status |
-| GET | `/api/admin/blog?id=` | full locales |
-| PUT | `/api/admin/blog` | `{ "id", ...fields }`. Locale objects are merged per language |
-| PUT | `/api/admin/blog` | `{ "action": "delete", "id" }` |
-| PUT | `/api/admin/blog` | `{ "action": "publish", "id" }` sets `publishedAt` the first time |
-| PUT | `/api/admin/blog` | `{ "action": "unpublish", "id" }` sets `draft` |
-| GET | `/api/admin/blog?view=preview&id=&lang=en` | resolved draft or published copy |
-
-```json
-{
-  "slug": "first-project",
-  "category": "projects",
-  "tags": ["construction"],
-  "featured": true,
-  "featuredImage": "https://cdn.example.com/cover.jpg",
-  "gallery": [],
-  "status": "draft",
-  "locales": {
-    "en": {
-      "title": "First project",
-      "excerpt": "A commercial build",
-      "content": "<p>English body</p>",
-      "seo": { "metaTitle": "First project", "metaDescription": "" }
-    },
-    "ar": {
-      "title": "المشروع الأول",
-      "excerpt": "بناء تجاري",
-      "content": "<p>النص العربي</p>"
-    }
-  }
-}
-```
-
-`locales.en.title` is required. `status` is `draft`, `published`, or `archived`. Slugs are unique.
-
-## Blog categories
-
-`GET /api/public/blog-category?lang=ar` returns active categories only.
-
-Admin `/api/admin/blog-category`. Bearer.
-
-| Method | Path | Notes |
-| --- | --- | --- |
-| GET | `/api/admin/blog-category` | `page`, `limit`, `search`, `status` |
-| PUT | `/api/admin/blog-category` | create. `name.en` required |
-| GET | `/api/admin/blog-category?id=` | |
-| PUT | `/api/admin/blog-category` | `{ "id", ...fields }`. Name and description merge by language |
-| PUT | `/api/admin/blog-category` | `{ "action": "delete", "id", "force": true }` when a blog uses it |
-
-```json
-{
-  "name": { "en": "Projects", "ar": "المشاريع" },
-  "slug": "projects",
-  "description": { "en": "Project stories", "ar": "" },
-  "status": "active"
-}
-```
-
-`status` is `active` or `inactive`.
 
 ## Media
 
@@ -815,7 +645,7 @@ Auth: none. Returns the resolved public site: name, logo, favicon, languages, di
 
 ## SEO fields
 
-Page SEO, blog SEO, and default SEO use the same fields, stored separately for each language:
+Page SEO and default SEO use the same fields, stored separately for each language:
 
 `metaTitle`, `metaDescription`, `keywords`, `canonicalUrl`, `ogTitle`, `ogDescription`, `ogImage`, `robots`, `schemaMarkup`.
 

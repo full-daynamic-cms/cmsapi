@@ -39,14 +39,6 @@ const errorHandler = (err, req, res, next) => {
     }
 
     if (keyPattern.slug || message.includes("slug")) {
-      if (message.includes(".blogs ") || message.includes(".blogs index")) {
-        return sendError(res, 409, "Blog slug already exists");
-      }
-
-      if (message.includes(".blogcategories ") || message.includes(".blogcategories index")) {
-        return sendError(res, 409, "Category slug already exists");
-      }
-
       if (message.includes(".pages ") || message.includes(".pages index")) {
         return sendError(res, 409, "Page slug already exists");
       }

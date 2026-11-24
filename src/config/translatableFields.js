@@ -50,8 +50,6 @@ const ENTITY_ALIASES = Object.freeze({
   page: "Page",
   pagesection: "Section",
   section: "Section",
-  blog: "Blog",
-  blogcategory: "BlogCategory",
   websitesettings: "WebsiteSettings",
   settings: "WebsiteSettings",
 });
@@ -66,8 +64,6 @@ const ENTITY_FIELDS = Object.freeze({
     "settings.hours",
     "settings.announcement",
   ]),
-  Blog: Object.freeze(["title", "excerpt", "content"]),
-  BlogCategory: Object.freeze(["name", "description"]),
   WebsiteSettings: Object.freeze([
     "websiteName",
     "contact.address",

@@ -1,6 +1,6 @@
 # Multilingual system
 
-English stays on each content record. Every other language is stored in two collections: `languages` and `translations`. Adding a language does not change page, section, or blog schemas.
+English stays on each content record. Every other language is stored in two collections: `languages` and `translations`. Adding a language does not change page or section schemas.
 
 The existing `{ "$t": "home.hero.title" }` dictionary still works. A static translation row for the same key and language overrides that dictionary value. Dynamic translations override the English field only in the API response. They are never written back onto the content document.
 
@@ -38,8 +38,6 @@ Configured in `src/config/translatableFields.js`. IDs, slugs, prices, quantities
 | --- | --- |
 | `Page` | `title` |
 | `Section` | `name`, text inside `content` (including `items`, `questions`, `features`, `slides`) |
-| `Blog` | `title`, `excerpt`, `content` (English source is `locales.en`) |
-| `BlogCategory` | `name`, `description` |
 | `WebsiteSettings` | `websiteName`, `contact.address`, `maintenanceMessage`, text in `header` and `footer` |
 
 ## API
@@ -125,14 +123,10 @@ A translation for the default language is rejected. That text stays on the conte
 Pass `lang` on the existing public routes:
 
 - `GET /api/public/page?slug=home&lang=ar`
-- `GET /api/public/blog?slug=first-project&lang=ar`
-- `GET /api/public/blog-category?lang=ar`
 - `GET /api/public/settings?lang=ar`
 - `GET /api/public/translation?lang=ar`
 
 English, or whichever language is the default, returns the stored fields. Another language replaces configured text fields when a dynamic translation exists, then resolves `{ "$t": "key" }` references. A missing translation falls back to the default-language value.
-
-Blog `locales.ar` and category `{ "ar": "..." }` values still work. A dynamic translation for the same field wins.
 
 ## Resolution
 
@@ -165,7 +159,7 @@ On startup the API marks older translation documents as `dictionary` and rebuild
 
 ## Migration
 
-Legacy `*_ar` fields, blog `locales`, and category language maps can be copied into the translation collection. The script is a dry run until `--yes` is passed. It skips rows that already exist, so it can be run again. It does not delete or rename source fields.
+Legacy `*_ar` fields on pages, sections, and settings can be copied into the translation collection. The script is a dry run until `--yes` is passed. It skips rows that already exist, so it can be run again. It does not delete or rename source fields.
 
 ```bash
 npm run migrate:translations

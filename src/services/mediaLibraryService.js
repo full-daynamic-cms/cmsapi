@@ -2,7 +2,6 @@ const path = require("path");
 const Media = require("../models/Media");
 const Page = require("../models/Page");
 const Section = require("../models/Section");
-const Blog = require("../models/Blog");
 const WebsiteSettings = require("../models/WebsiteSettings");
 const ApiError = require("../utils/ApiError");
 const { paginateQuery } = require("../utils/pagination");
@@ -105,12 +104,11 @@ const isReferencedByPublishedContent = async (media) => {
 
   const pages = await Page.find({ status: "published" }).select("title seo publishedSnapshot").lean();
   const sectionIds = pages.flatMap((page) => (page.publishedSnapshot?.sections || []).map((item) => item.section));
-  const [sections, blogs, settings] = await Promise.all([
+  const [sections, settings] = await Promise.all([
     sectionIds.length ? Section.find({ _id: { $in: sectionIds } }).select("content settings").lean() : [],
-    Blog.find({ status: "published" }).select("locales featuredImage gallery").lean(),
     WebsiteSettings.findOne().select("logo favicon websiteName footer header defaultSeo custom").lean(),
   ]);
-  const haystack = JSON.stringify({ pages, sections, blogs, settings });
+  const haystack = JSON.stringify({ pages, sections, settings });
   return needles.some((needle) => haystack.includes(needle));
 };
 

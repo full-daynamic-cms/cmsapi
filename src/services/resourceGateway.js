@@ -1,8 +1,6 @@
 const ApiError = require("../utils/ApiError");
 const pageService = require("./pageService");
 const sectionService = require("./sectionService");
-const blogService = require("./blogService");
-const blogCategoryService = require("./blogCategoryService");
 const translationService = require("./translationService");
 const contentTranslationService = require("./contentTranslationService");
 const languageService = require("./languageService");
@@ -11,7 +9,6 @@ const contactService = require("./contactService");
 const mediaLibraryService = require("./mediaLibraryService");
 const pageValidator = require("../validators/pageValidator");
 const sectionValidator = require("../validators/sectionValidator");
-const blogValidator = require("../validators/blogValidator");
 const translationValidator = require("../validators/translationValidator");
 const languageValidator = require("../validators/languageValidator");
 const settingsValidator = require("../validators/settingsValidator");
@@ -23,12 +20,6 @@ const MODELS = Object.freeze({
   pages: "page",
   section: "section",
   sections: "section",
-  blog: "blog",
-  blogs: "blog",
-  "blog-category": "blog-category",
-  "blog-categories": "blog-category",
-  category: "blog-category",
-  categories: "blog-category",
   translation: "translation",
   translations: "translation",
   language: "language",
@@ -40,7 +31,7 @@ const MODELS = Object.freeze({
   setting: "settings",
 });
 
-const PUBLIC_MODELS = new Set(["page", "blog", "blog-category", "translation", "language", "settings"]);
+const PUBLIC_MODELS = new Set(["page", "translation", "language", "settings"]);
 const QUERY_CONTROL = new Set(["slug", "id", "view", "key", "code", "kind", "entityId", "action", "force"]);
 const BODY_CONTROL = new Set(["action", "id", "kind", "force"]);
 
@@ -149,50 +140,6 @@ const readSection = async (query) => {
   return ok(200, "Records retrieved successfully", await sectionService.listSections(sectionValidator.validateListSections(omit(query, QUERY_CONTROL))));
 };
 
-const readBlog = async (query, admin) => {
-  if (admin && query.view === "preview") {
-    const validated = pageValidator.validateLanguage(langQuery(query));
-    return ok(200, "Blog retrieved successfully", await blogService.previewBlog(requireId(query.id), validated.lang));
-  }
-
-  if (!admin && query.slug && query.view === "related") {
-    pageValidator.validateLanguage(langQuery(query));
-    return ok(200, "Records retrieved successfully", await blogService.relatedBlogs(query.slug, query.lang));
-  }
-
-  if (!admin && query.slug) {
-    pageValidator.validateLanguage(langQuery(query));
-    return ok(200, "Blog retrieved successfully", await blogService.getPublicBlog(query.slug, query.lang));
-  }
-
-  if (admin && query.id) {
-    return ok(200, "Blog retrieved successfully", await blogService.getBlog(query.id));
-  }
-
-  if (admin && query.slug) {
-    return ok(200, "Blog retrieved successfully", await blogService.getBlogBySlug(query.slug));
-  }
-
-  if (admin) {
-    return ok(200, "Records retrieved successfully", await blogService.listBlogs(blogValidator.validateListBlogs(omit(query, QUERY_CONTROL))));
-  }
-
-  return ok(200, "Records retrieved successfully", await blogService.listPublicBlogs(blogValidator.validatePublicBlogs(omit(query, QUERY_CONTROL))));
-};
-
-const readCategory = async (query, admin) => {
-  if (admin && query.id) {
-    return ok(200, "Category retrieved successfully", await blogCategoryService.getCategory(query.id));
-  }
-
-  if (admin) {
-    return ok(200, "Records retrieved successfully", await blogCategoryService.listCategories(blogValidator.validateListCategories(omit(query, QUERY_CONTROL))));
-  }
-
-  pageValidator.validateLanguage(langQuery(query));
-  return ok(200, "Records retrieved successfully", await blogCategoryService.listPublicCategories(query.lang));
-};
-
 const readTranslation = async (query, admin) => {
   if (query.key) {
     return ok(200, "Translation retrieved successfully", await translationService.getTranslationByKey(query.key, { activeOnly: !admin }));
@@ -293,8 +240,6 @@ const readPublic = async (modelName, query) => {
   }
 
   if (model === "page") return readPage(query, false);
-  if (model === "blog") return readBlog(query, false);
-  if (model === "blog-category") return readCategory(query, false);
   if (model === "translation") return readTranslation(query, false);
   if (model === "language") return readLanguage(query, false);
   return readSettings(query, false);
@@ -305,8 +250,6 @@ const readAdmin = async (modelName, query) => {
 
   if (model === "page") return readPage(query, true);
   if (model === "section") return readSection(query);
-  if (model === "blog") return readBlog(query, true);
-  if (model === "blog-category") return readCategory(query, true);
   if (model === "translation") return readTranslation(query, true);
   if (model === "language") return readLanguage(query, true);
   if (model === "settings") return readSettings(query, true);
@@ -379,56 +322,6 @@ const writeSection = async (body, userId, query) => {
   if (action === "create") {
     const validated = sectionValidator.validateCreateSection(payload);
     return ok(201, "Section created successfully", await sectionService.createSection(validated, userId));
-  }
-
-  throw new ApiError(400, "Unknown action");
-};
-
-const writeBlog = async (body, userId) => {
-  const action = body.action || (body.id ? "update" : "create");
-  const payload = omit(body, BODY_CONTROL);
-
-  if (action === "publish") {
-    return ok(200, "Blog published successfully", await blogService.publishBlog(requireId(body.id), userId));
-  }
-
-  if (action === "unpublish") {
-    return ok(200, "Blog unpublished successfully", await blogService.unpublishBlog(requireId(body.id), userId));
-  }
-
-  if (action === "delete") {
-    return ok(200, "Blog deleted successfully", await blogService.deleteBlog(requireId(body.id)));
-  }
-
-  if (action === "update") {
-    const validated = blogValidator.validateUpdateBlog(payload);
-    return ok(200, "Blog updated successfully", await blogService.updateBlog(requireId(body.id), validated, userId));
-  }
-
-  if (action === "create") {
-    const validated = blogValidator.validateCreateBlog(payload);
-    return ok(201, "Blog created successfully", await blogService.createBlog(validated, userId));
-  }
-
-  throw new ApiError(400, "Unknown action");
-};
-
-const writeCategory = async (body, userId, query) => {
-  const action = body.action || (body.id ? "update" : "create");
-  const payload = omit(body, BODY_CONTROL);
-
-  if (action === "delete") {
-    return ok(200, "Category deleted successfully", await blogCategoryService.deleteCategory(requireId(body.id), { force: isForce(body, query) }));
-  }
-
-  if (action === "update") {
-    const validated = blogValidator.validateUpdateCategory(payload);
-    return ok(200, "Category updated successfully", await blogCategoryService.updateCategory(requireId(body.id), validated, userId));
-  }
-
-  if (action === "create") {
-    const validated = blogValidator.validateCreateCategory(payload);
-    return ok(201, "Category created successfully", await blogCategoryService.createCategory(validated, userId));
   }
 
   throw new ApiError(400, "Unknown action");
@@ -591,8 +484,6 @@ const writeAdmin = async (modelName, body, userId, file, query = {}) => {
 
   if (model === "page") return writePage(body, userId);
   if (model === "section") return writeSection(body, userId, query);
-  if (model === "blog") return writeBlog(body, userId);
-  if (model === "blog-category") return writeCategory(body, userId, query);
   if (model === "translation") return writeTranslation(body, userId);
   if (model === "language") return writeLanguage(body);
   if (model === "settings") return writeSettings(body, userId);

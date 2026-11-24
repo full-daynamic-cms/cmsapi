@@ -25,7 +25,6 @@ const PAGE_TYPES = Object.freeze([
   "about",
   "services",
   "contact",
-  "blogs",
   "faq",
   "privacy",
   "terms",
@@ -34,8 +33,6 @@ const PAGE_TYPES = Object.freeze([
 
 const PAGE_STATUSES = Object.freeze(["draft", "published", "archived"]);
 const SECTION_STATUSES = Object.freeze(["active", "inactive"]);
-const BLOG_STATUSES = Object.freeze(["draft", "published", "archived"]);
-const CATEGORY_STATUSES = Object.freeze(["active", "inactive"]);
 const TRANSLATION_STATUSES = Object.freeze(["active", "inactive"]);
 const TRANSLATION_TYPES = Object.freeze(["dictionary", "static", "dynamic"]);
 const CONTACT_STATUSES = Object.freeze(["new", "read", "replied", "archived"]);
@@ -91,8 +88,6 @@ module.exports = {
   PAGE_TYPES,
   PAGE_STATUSES,
   SECTION_STATUSES,
-  BLOG_STATUSES,
-  CATEGORY_STATUSES,
   TRANSLATION_STATUSES,
   TRANSLATION_TYPES,
   CONTACT_STATUSES,

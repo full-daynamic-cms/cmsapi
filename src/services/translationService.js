@@ -2,8 +2,6 @@ const crypto = require("crypto");
 const Translation = require("../models/Translation");
 const Section = require("../models/Section");
 const Page = require("../models/Page");
-const Blog = require("../models/Blog");
-const BlogCategory = require("../models/BlogCategory");
 const WebsiteSettings = require("../models/WebsiteSettings");
 const ApiError = require("../utils/ApiError");
 const { paginateQuery } = require("../utils/pagination");
@@ -346,11 +344,9 @@ const collectUsedKeys = async () => {
   const absorb = (value) => {
     collectTranslationKeys(value, used);
   };
-  const [sections, pages, blogs, categories, settings] = await Promise.all([
+  const [sections, pages, settings] = await Promise.all([
     Section.find().select("content settings").lean(),
     Page.find().select("title seo publishedSnapshot").lean(),
-    Blog.find().select("locales").lean(),
-    BlogCategory.find().select("name description").lean(),
     WebsiteSettings.find().select("websiteName contact footer header defaultSeo maintenanceMessage custom").lean(),
   ]);
 
@@ -362,11 +358,6 @@ const collectUsedKeys = async () => {
     absorb(page.title);
     absorb(page.seo);
     absorb(page.publishedSnapshot);
-  });
-  blogs.forEach((blog) => absorb(blog.locales));
-  categories.forEach((category) => {
-    absorb(category.name);
-    absorb(category.description);
   });
   settings.forEach((entry) => absorb(entry));
 

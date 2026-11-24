@@ -47,8 +47,6 @@ const localizedEntries = (value) => {
 const migrateLegacyTranslations = async ({ dryRun = true, splitStatic = false } = {}) => {
   const Page = require("../models/Page");
   const Section = require("../models/Section");
-  const Blog = require("../models/Blog");
-  const BlogCategory = require("../models/BlogCategory");
   const WebsiteSettings = require("../models/WebsiteSettings");
   const defaultLanguage = await languageService.defaultCode();
   const planned = [];
@@ -69,11 +67,9 @@ const migrateLegacyTranslations = async ({ dryRun = true, splitStatic = false } 
     groups[entry.entityType || entry.type] = (groups[entry.entityType || entry.type] || 0) + 1;
   };
 
-  const [pages, sections, blogs, categories, settings, dictionaries] = await Promise.all([
+  const [pages, sections, settings, dictionaries] = await Promise.all([
     Page.find().lean(),
     Section.find().lean(),
-    Blog.find().lean(),
-    BlogCategory.find().lean(),
     WebsiteSettings.find().lean(),
     Translation.find({ $or: [{ type: "dictionary" }, { type: { $exists: false } }] }).select("key translations").lean(),
   ]);
@@ -99,28 +95,6 @@ const migrateLegacyTranslations = async ({ dryRun = true, splitStatic = false } 
   scanArabicFields(pages, "Page");
   scanArabicFields(sections, "Section");
   scanArabicFields(settings, "WebsiteSettings");
-
-  for (const blog of blogs) {
-    for (const [languageCode, locale] of Object.entries(blog.locales || {})) {
-      if (!locale || typeof locale !== "object") {
-        continue;
-      }
-
-      for (const field of ["title", "excerpt", "content"]) {
-        if (typeof locale[field] === "string") {
-          stage({ type: "dynamic", languageCode, entityType: "Blog", entityId: blog._id, field, value: locale[field] });
-        }
-      }
-    }
-  }
-
-  for (const category of categories) {
-    for (const field of ["name", "description"]) {
-      for (const [languageCode, value] of localizedEntries(category[field])) {
-        stage({ type: "dynamic", languageCode, entityType: "BlogCategory", entityId: category._id, field, value });
-      }
-    }
-  }
 
   for (const doc of settings) {
     for (const field of ["websiteName", "maintenanceMessage"]) {

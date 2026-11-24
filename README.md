@@ -21,7 +21,7 @@ npm run seed
 
 This creates published home, about, services, and contact pages, plus Arabic translations for the section text. `npm run seed -- --force` replaces those seeded pages.
 
-Every model uses the same three routes. `model` is `page`, `section`, `blog`, `blog-category`, `translation`, `language`, `media`, `contact`, or `settings`.
+Every model uses the same three routes. Site content is `page` and `section`. The other models are `translation`, `language`, `media`, `contact`, and `settings`.
 
 ```text
 GET /api/public/page?slug=home&lang=ar

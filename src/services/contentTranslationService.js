@@ -23,8 +23,6 @@ const modelFor = (entityType) => {
   const models = {
     Page: () => require("../models/Page"),
     Section: () => require("../models/Section"),
-    Blog: () => require("../models/Blog"),
-    BlogCategory: () => require("../models/BlogCategory"),
     WebsiteSettings: () => require("../models/WebsiteSettings"),
   };
 
@@ -44,14 +42,6 @@ const entityLabel = (entityType, doc) => {
     return doc.name || "";
   }
 
-  if (entityType === "Blog") {
-    return doc.locales?.en?.title || doc.slug || "";
-  }
-
-  if (entityType === "BlogCategory") {
-    return (typeof doc.name === "string" ? doc.name : doc.name?.en) || doc.slug || "";
-  }
-
   if (entityType === "WebsiteSettings") {
     return "Website settings";
   }
@@ -62,32 +52,6 @@ const entityLabel = (entityType, doc) => {
 const projectSource = (entityType, doc, defaultCode) => {
   if (!doc) {
     return {};
-  }
-
-  if (entityType === "Blog") {
-    const locale = doc.locales?.[defaultCode] || doc.locales?.en || {};
-    return {
-      _id: doc._id,
-      title: typeof locale.title === "string" ? locale.title : "",
-      excerpt: typeof locale.excerpt === "string" ? locale.excerpt : "",
-      content: typeof locale.content === "string" ? locale.content : "",
-    };
-  }
-
-  if (entityType === "BlogCategory") {
-    const read = (value) => {
-      if (typeof value === "string") {
-        return value;
-      }
-
-      if (value && typeof value === "object") {
-        return value[defaultCode] || value.en || "";
-      }
-
-      return "";
-    };
-
-    return { _id: doc._id, name: read(doc.name), description: read(doc.description) };
   }
 
   return doc;
@@ -819,14 +783,6 @@ const searchFilter = (entityType, search) => {
 
   if (entityType === "Section") {
     return { name: regex };
-  }
-
-  if (entityType === "Blog") {
-    return { $or: [{ slug: regex }, { "locales.en.title": regex }] };
-  }
-
-  if (entityType === "BlogCategory") {
-    return { $or: [{ slug: regex }, { "name.en": regex }] };
   }
 
   return {};

@@ -242,74 +242,6 @@ const start = async () => {
     const blockedDelete = await request("PUT", "/api/admin/section", { action: "delete", id: hero.json.data._id });
     assert(blockedDelete.status === 409, "refuses to delete an assigned section");
 
-    const category = await request("PUT", "/api/admin/blog-category", {
-      name: { en: "Projects", ar: "المشاريع" },
-      slug: "projects",
-      description: { en: "Project stories" },
-    });
-    assert(category.status === 201, "creates a blog category", category.json);
-    const duplicateCategory = await request("PUT", "/api/admin/blog-category", {
-      name: { en: "Projects" },
-      slug: "projects",
-    });
-    assert(duplicateCategory.status === 409, "rejects a duplicate category slug");
-
-    const post = await request("PUT", "/api/admin/blog", {
-      slug: "first-project",
-      category: "projects",
-      tags: ["construction"],
-      featured: true,
-      locales: {
-        en: {
-          title: "First project",
-          excerpt: "A commercial build",
-          content: "<p>English body</p>",
-          seo: { metaTitle: "First project" },
-        },
-        ar: { title: "المشروع الأول", excerpt: "بناء تجاري", content: "<p>النص العربي</p>" },
-      },
-    });
-    assert(post.status === 201 && post.json.data.status === "draft", "creates a bilingual blog", post.json);
-    const hiddenPost = await request("GET", "/api/public/blog?slug=first-project&lang=ar", undefined, { auth: false });
-    assert(hiddenPost.status === 404, "public blogs omit drafts");
-    await request("PUT", "/api/admin/blog", { action: "publish", id: post.json.data._id });
-    const arabicPost = await request("GET", "/api/public/blog?slug=first-project&lang=ar", undefined, { auth: false });
-    assert(
-      arabicPost.status === 200 &&
-        arabicPost.json.data.title === "المشروع الأول" &&
-        arabicPost.json.data.content === "<p>النص العربي</p>" &&
-        arabicPost.json.data.direction === "rtl" &&
-        arabicPost.json.data.category.name === "المشاريع",
-      "returns Arabic blog content",
-      arabicPost.json
-    );
-    const englishPost = await request("GET", "/api/public/blog?slug=first-project&lang=en", undefined, { auth: false });
-    assert(englishPost.json.data.title === "First project" && englishPost.json.data.content === "<p>English body</p>", "returns English blog content");
-
-    await request("PUT", "/api/admin/blog", {
-      slug: "second-project",
-      category: category.json.data._id,
-      status: "published",
-      locales: { en: { title: "Second project", excerpt: "Another build", content: "<p>Second</p>" } },
-    });
-    await request("PUT", "/api/admin/blog", {
-      slug: "office-notes",
-      status: "published",
-      featured: false,
-      locales: { en: { title: "Office notes", excerpt: "Internal", content: "<p>Notes</p>" } },
-    });
-    const filtered = await request("GET", "/api/public/blog?lang=en&category=projects&featured=true", undefined, { auth: false });
-    assert(
-      filtered.status === 200 && filtered.json.data.items.length === 1 && filtered.json.data.items[0].slug === "first-project",
-      "filters public blogs",
-      filtered.json
-    );
-    assert(filtered.json.data.pagination.total === 1, "returns pagination");
-    const related = await request("GET", "/api/public/blog?slug=first-project&view=related&lang=en", undefined, { auth: false });
-    assert(related.status === 200 && related.json.data.some((item) => item.slug === "second-project"), "returns related blogs", related.json);
-    const found = await request("GET", "/api/admin/blog?search=Office&status=published");
-    assert(found.status === 200 && found.json.data.items.some((item) => item.slug === "office-notes"), "searches admin blogs");
-
     const badFile = new FormData();
     badFile.append("file", new Blob(["MZ"], { type: "application/x-msdownload" }), "app.exe");
     const rejectedFile = await request("PUT", "/api/admin/media", undefined, { form: badFile });
@@ -403,18 +335,8 @@ const start = async () => {
       reordered.json
     );
 
-    const publicCategories = await request("GET", "/api/public/blog-category?lang=ar", undefined, { auth: false });
-    assert(
-      publicCategories.status === 200 &&
-        publicCategories.json.data.direction === "rtl" &&
-        publicCategories.json.data.items.some((item) => item.slug === "projects" && item.name === "المشاريع"),
-      "lists public categories",
-      publicCategories.json
-    );
-    await request("PUT", "/api/admin/blog", { action: "unpublish", id: post.json.data._id });
-    const unpublished = await request("GET", "/api/public/blog?slug=first-project&lang=en", undefined, { auth: false });
-    assert(unpublished.status === 404, "unpublish hides a blog");
-    await request("PUT", "/api/admin/blog", { action: "publish", id: post.json.data._id });
+    const removed = await request("GET", "/api/public/blog", undefined, { auth: false });
+    assert(removed.status === 404, "blogs are not a content model");
 
     await request("PUT", "/api/admin/settings", { maintenanceMode: true });
     const closed = await request("GET", "/api/public/page?slug=home&lang=en", undefined, { auth: false });
