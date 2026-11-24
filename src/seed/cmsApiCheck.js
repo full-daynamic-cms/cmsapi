@@ -50,7 +50,7 @@ const start = async () => {
 
   try {
     const spec = await request("GET", "/openapi.json", undefined, { auth: false });
-    assert(spec.status === 200 && spec.json.openapi === "3.0.3" && spec.json.paths["/api/public/{model}"], "serves the OpenAPI document", spec.json.info);
+    assert(spec.status === 200 && spec.json.openapi === "3.0.3" && spec.json.paths["/api/public/page"] && spec.json.paths["/api/admin/section"], "serves the OpenAPI document", spec.json.info);
     const docsResponse = await fetch(`${base}/docs`);
     const docsHtml = await docsResponse.text();
     assert(docsResponse.status === 200 && docsHtml.includes("@scalar/api-reference"), "serves the Scalar reference");
