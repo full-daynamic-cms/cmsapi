@@ -56,13 +56,11 @@ Admin routes require `Authorization: Bearer <token>`.
 
 | Method | Path | Access |
 | --- | --- | --- |
-| GET | `/api/languages` | active languages |
-| GET | `/api/languages/:id` | one language; a language code is also accepted |
-| POST | `/api/languages` | admin |
-| PUT | `/api/languages/:id` | admin |
-| DELETE | `/api/languages/:id` | admin, soft delete |
-| GET | `/api/admin/languages` | all languages that are not deleted |
-| GET | `/api/public/languages` | active languages |
+| GET | `/api/public/language` | active languages |
+| GET | `/api/public/language?code=ar` | one language |
+| GET | `/api/admin/language` | languages that are not deleted |
+| PUT | `/api/admin/language` | admin create, or update when `id` is sent |
+| PUT | `/api/admin/language` | `{ "action": "delete", "id" }` soft delete |
 
 Create:
 
@@ -74,12 +72,12 @@ Create:
 
 | Method | Path | Access |
 | --- | --- | --- |
-| POST | `/api/translations/static` | admin |
-| POST | `/api/translations/static/bulk` | admin, `mode` is `upsert` or `create` |
-| GET | `/api/translations/static/:languageCode` | public key-value bundle |
-| GET | `/api/admin/translations/static?languageCode=ar` | paginated editor rows, `missing=true` filters gaps |
-| PUT | `/api/translations/static/:id` | admin |
-| DELETE | `/api/translations/static/:id` | admin |
+| PUT | `/api/admin/translation` | admin. Body includes `languageCode`, `key`, and `value` |
+| PUT | `/api/admin/translation` | `{ "action": "bulk", "kind": "static", "languageCode", "items" }`. `mode` is `upsert` or `create` |
+| GET | `/api/public/translation?lang=ar` | public key-value bundle |
+| GET | `/api/admin/translation?kind=static&languageCode=ar` | paginated editor rows, `missing=true` filters gaps |
+| PUT | `/api/admin/translation` | `{ "id", "kind": "static", "value" }` |
+| PUT | `/api/admin/translation` | `{ "action": "delete", "id", "kind": "static" }` |
 
 Bundle:
 
@@ -95,20 +93,18 @@ Bundle:
 }
 ```
 
-`GET /api/translations?lang=ar` and `GET /api/public/translations?lang=ar` return the same bundle. `GET /api/translations/ar` also returns it when `ar` is a language. Dotted keys such as `home.hero.title` still return the dictionary record.
-
-The original dictionary endpoints (`POST /api/admin/translations`, bulk, import, export, missing, unused) are unchanged.
+`GET /api/public/translation?lang=ar` returns the bundle. `GET /api/public/translation?key=home.hero.title` returns one dictionary record.
 
 ### Dynamic translations
 
 | Method | Path | Access |
 | --- | --- | --- |
-| POST | `/api/translations/dynamic` | admin |
-| POST | `/api/translations/dynamic/bulk` | admin |
-| GET | `/api/translations/dynamic/:entityType/:entityId` | admin, original values plus every saved translation |
-| GET | `/api/admin/translations/dynamic?entityType=Section&languageCode=ar` | editor list; add `missing=true` for gaps |
-| PUT | `/api/translations/dynamic/:id` | admin |
-| DELETE | `/api/translations/dynamic/:id` | admin |
+| PUT | `/api/admin/translation` | admin. Body includes `languageCode`, `entityType`, `entityId`, `field`, and `value` |
+| PUT | `/api/admin/translation` | `{ "action": "bulk", "kind": "dynamic", "items" }` |
+| GET | `/api/admin/translation?kind=dynamic&entityType=Section&entityId=` | original values plus every saved translation |
+| GET | `/api/admin/translation?kind=dynamic&entityType=Section&languageCode=ar` | editor list; add `missing=true` for gaps |
+| PUT | `/api/admin/translation` | `{ "id", "kind": "dynamic", "value" }` |
+| PUT | `/api/admin/translation` | `{ "action": "delete", "id", "kind": "dynamic" }` |
 
 Create:
 
@@ -128,10 +124,11 @@ A translation for the default language is rejected. That text stays on the conte
 
 Pass `lang` on the existing public routes:
 
-- `GET /api/public/pages/:slug?lang=ar`
-- `GET /api/public/blogs/:slug?lang=ar`
-- `GET /api/public/blog-categories?lang=ar`
+- `GET /api/public/page?slug=home&lang=ar`
+- `GET /api/public/blog?slug=first-project&lang=ar`
+- `GET /api/public/blog-category?lang=ar`
 - `GET /api/public/settings?lang=ar`
+- `GET /api/public/translation?lang=ar`
 
 English, or whichever language is the default, returns the stored fields. Another language replaces configured text fields when a dynamic translation exists, then resolves `{ "$t": "key" }` references. A missing translation falls back to the default-language value.
 
@@ -183,11 +180,11 @@ Review the report before removing any old fields. Do that in a later change, aft
 
 ## Frontend
 
-1. `GET /api/public/languages` for the language switcher. Use `direction` for `dir`.
-2. `GET /api/public/translations?lang=ar` for interface strings. Look up `translations["common.save"]`. There is no `if (lang === "ar")` branch.
+1. `GET /api/public/language` for the language switcher. Use `direction` for `dir`.
+2. `GET /api/public/translation?lang=ar` for interface strings. Look up `translations["common.save"]`. There is no `if (lang === "ar")` branch.
 3. Request CMS content with the same `lang`. Render `title` and `description` directly. The API has already chosen the translation or the default-language fallback.
-4. In the admin editor, load `GET /api/admin/translations/dynamic/:entityType/:entityId`, show `fields[].source`, and save with `POST /api/translations/dynamic` or the bulk route.
-5. Use `missing=true` on the static and dynamic list routes to show untranslated rows.
+4. In the admin editor, load `GET /api/admin/translation?kind=dynamic&entityType=Section&entityId=DOCUMENT_ID`, show `fields[].source`, and save with `PUT /api/admin/translation`.
+5. Use `missing=true` on the static and dynamic list queries to show untranslated rows.
 
 ## Tests
 

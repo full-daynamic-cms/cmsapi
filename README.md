@@ -21,10 +21,12 @@ npm run seed
 
 This creates published home, about, services, and contact pages, plus Arabic translations for the section text. `npm run seed -- --force` replaces those seeded pages.
 
-Public home page:
+Every model uses the same three routes. `model` is `page`, `section`, `blog`, `blog-category`, `translation`, `language`, `media`, `contact`, or `settings`.
 
 ```text
-GET /api/public/pages/home?lang=ar
+GET /api/public/page?slug=home&lang=ar
+GET /api/admin/page?id=PAGE_ID
+PUT /api/admin/page
 ```
 
-Admin page and section routes use a Bearer token from `POST /api/auth/login`.
+`PUT` creates a record when `id` is omitted and updates it when `id` is sent. `action` covers publish, unpublish, delete, reorder, duplicate, and translation import. `POST /api/public/contact` is the only public write. Admin routes use a Bearer token from `POST /api/auth/login`.

@@ -50,7 +50,7 @@ const start = async () => {
 
   try {
     const spec = await request("GET", "/openapi.json", undefined, { auth: false });
-    assert(spec.status === 200 && spec.json.openapi === "3.0.3" && spec.json.paths["/api/public/pages/{slug}"], "serves the OpenAPI document", spec.json.info);
+    assert(spec.status === 200 && spec.json.openapi === "3.0.3" && spec.json.paths["/api/public/{model}"], "serves the OpenAPI document", spec.json.info);
     const docsResponse = await fetch(`${base}/docs`);
     const docsHtml = await docsResponse.text();
     assert(docsResponse.status === 200 && docsHtml.includes("@scalar/api-reference"), "serves the Scalar reference");
@@ -63,23 +63,24 @@ const start = async () => {
     assert(registered.status === 201, "registers an admin", registered.json);
     token = registered.json.data.token;
 
-    const locked = await request("GET", "/api/admin/pages", undefined, { auth: false });
+    const locked = await request("GET", "/api/admin/page", undefined, { auth: false });
     assert(locked.status === 401, "admin CMS routes require authentication");
 
-    const duplicateKey = await request("POST", "/api/admin/translations", {
+    const duplicateKey = await request("PUT", "/api/admin/translation", {
       key: "home.hero.title",
       translations: { en: "Welcome to Our Company", ar: "مرحباً بكم في شركتنا" },
       category: "home",
       description: "Home hero heading",
     });
     assert(duplicateKey.status === 201, "creates a translation", duplicateKey.json);
-    const again = await request("POST", "/api/translations", {
+    const again = await request("PUT", "/api/admin/translation", {
       key: "home.hero.title",
       translations: { en: "Welcome to Our Company" },
     });
     assert(again.status === 409, "rejects a duplicate translation key", again.json);
 
-    const subtitle = await request("POST", "/api/translations/bulk", {
+    const subtitle = await request("PUT", "/api/admin/translation", {
+      action: "bulk",
       items: [
         {
           key: "home.hero.subtitle",
@@ -100,25 +101,25 @@ const start = async () => {
     });
     assert(subtitle.status === 201 && subtitle.json.data.length === 3, "bulk creates translations", subtitle.json);
 
-    const english = await request("GET", "/api/translations?lang=en", undefined, { auth: false });
+    const english = await request("GET", "/api/public/translation?lang=en", undefined, { auth: false });
     assert(
       english.status === 200 && english.json.data.translations["home.hero.title"] === "Welcome to Our Company",
       "returns the English dictionary"
     );
-    const arabic = await request("GET", "/api/public/translations?lang=ar", undefined, { auth: false });
+    const arabic = await request("GET", "/api/public/translation?lang=ar", undefined, { auth: false });
     assert(
       arabic.status === 200 &&
         arabic.json.data.direction === "rtl" &&
         arabic.json.data.translations["home.hero.title"] === "مرحباً بكم في شركتنا",
       "returns the Arabic dictionary"
     );
-    const missing = await request("GET", "/api/translations/missing?lang=ar");
+    const missing = await request("GET", "/api/admin/translation?view=missing&lang=ar");
     assert(
       missing.status === 200 && missing.json.data.items.some((item) => item.key === "home.hero.subtitle"),
       "detects a missing Arabic translation"
     );
 
-    const hero = await request("POST", "/api/admin/sections", {
+    const hero = await request("PUT", "/api/admin/section", {
       name: "Home hero",
       type: "hero",
       order: 1,
@@ -130,7 +131,7 @@ const start = async () => {
     });
     assert(hero.status === 201 && hero.json.data.content.title.$t === "home.hero.title", "stores a translation reference", hero.json);
 
-    const services = await request("POST", "/api/admin/sections", {
+    const services = await request("PUT", "/api/admin/section", {
       name: "Home services",
       type: "services",
       order: 2,
@@ -141,11 +142,11 @@ const start = async () => {
     });
     assert(services.status === 201, "creates a second section of a repeated type", services.json);
 
-    const unused = await request("GET", "/api/admin/translations/unused");
+    const unused = await request("GET", "/api/admin/translation?view=unused");
     assert(unused.status === 200 && unused.json.data.items.some((item) => item.key === "unused.sample"), "finds an unused key");
     assert(!unused.json.data.items.some((item) => item.key === "home.hero.title"), "does not flag a used key");
 
-    const draft = await request("POST", "/api/admin/pages", {
+    const draft = await request("PUT", "/api/admin/page", {
       title: { $t: "pages.home.title" },
       slug: "home",
       pageType: "home",
@@ -157,12 +158,12 @@ const start = async () => {
       seo: { en: { metaTitle: "Home", metaDescription: "Welcome to our website" } },
     });
     assert(draft.status === 201 && draft.json.data.status === "draft", "creates a draft page", draft.json);
-    const hidden = await request("GET", "/api/public/pages/home?lang=en", undefined, { auth: false });
+    const hidden = await request("GET", "/api/public/page?slug=home&lang=en", undefined, { auth: false });
     assert(hidden.status === 404, "public pages omit drafts");
 
-    const published = await request("POST", `/api/admin/pages/${draft.json.data._id}/publish`);
+    const published = await request("PUT", "/api/admin/page", { action: "publish", id: draft.json.data._id });
     assert(published.status === 200 && published.json.data.status === "published", "publishes a page", published.json);
-    const home = await request("GET", "/api/public/pages/home?lang=en", undefined, { auth: false });
+    const home = await request("GET", "/api/public/page?slug=home&lang=en", undefined, { auth: false });
     assert(home.status === 200 && home.json.message === "Page retrieved successfully", "retrieves a published page", home.json);
     assert(home.json.data.title === "Home", "resolves the page title");
     assert(home.json.data.language === "en" && home.json.data.direction === "ltr", "returns language metadata");
@@ -172,7 +173,7 @@ const start = async () => {
     assert(!JSON.stringify(home.json.data).includes("$t"), "does not expose translation references");
     assert(home.json.data.seo.metaTitle === "Home", "returns SEO metadata");
 
-    const homeArabic = await request("GET", "/api/public/pages/home?lang=ar", undefined, { auth: false });
+    const homeArabic = await request("GET", "/api/public/page?slug=home&lang=ar", undefined, { auth: false });
     assert(
       homeArabic.status === 200 &&
         homeArabic.json.data.language === "ar" &&
@@ -184,23 +185,25 @@ const start = async () => {
       homeArabic.json
     );
 
-    const edited = await request("PUT", `/api/admin/pages/${draft.json.data._id}`, {
+    const edited = await request("PUT", "/api/admin/page", {
+      id: draft.json.data._id,
       title: "Home draft title",
     });
     assert(edited.status === 200 && edited.json.data.hasUnpublishedChanges === true, "keeps unpublished edits off the public page");
-    const stillPublished = await request("GET", "/api/public/pages/home?lang=en", undefined, { auth: false });
+    const stillPublished = await request("GET", "/api/public/page?slug=home&lang=en", undefined, { auth: false });
     assert(stillPublished.json.data.title === "Home", "public page keeps the published snapshot");
-    const preview = await request("GET", `/api/admin/pages/${draft.json.data._id}/preview?lang=en`);
+    const preview = await request("GET", `/api/admin/page?view=preview&id=${draft.json.data._id}&lang=en`);
     assert(preview.json.data.title === "Home draft title", "admin preview shows the working copy");
 
-    await request("PUT", `/api/admin/sections/${services.json.data._id}`, {
+    await request("PUT", "/api/admin/section", {
+      id: services.json.data._id,
       type: "services",
       content: {
         title: "Updated services",
         items: [{ title: "Commercial", description: "Offices and mixed-use buildings." }],
       },
     });
-    const about = await request("POST", "/api/admin/pages", {
+    const about = await request("PUT", "/api/admin/page", {
       title: "About",
       slug: "about",
       pageType: "about",
@@ -208,49 +211,50 @@ const start = async () => {
       sections: [{ section: services.json.data._id, order: 1 }],
     });
     assert(about.status === 201, "shares a section with a second page", about.json);
-    const aboutPublic = await request("GET", "/api/public/pages/about?lang=en", undefined, { auth: false });
-    const homeAfterShare = await request("GET", "/api/public/pages/home?lang=en", undefined, { auth: false });
+    const aboutPublic = await request("GET", "/api/public/page?slug=about&lang=en", undefined, { auth: false });
+    const homeAfterShare = await request("GET", "/api/public/page?slug=home&lang=en", undefined, { auth: false });
     assert(
       aboutPublic.json.data.sections[0].content.title === "Updated services" &&
         homeAfterShare.json.data.sections[1].content.title === "Updated services",
       "a shared section update is reflected on every page"
     );
 
-    const copy = await request("POST", `/api/admin/sections/${hero.json.data._id}/duplicate`, {});
+    const copy = await request("PUT", "/api/admin/section", { action: "duplicate", id: hero.json.data._id });
     assert(copy.status === 201 && copy.json.data.content.title.$t !== "home.hero.title", "duplicates translation keys", copy.json);
-    await request("PUT", `/api/admin/translations/${duplicateKey.json.data._id}`, {
+    await request("PUT", "/api/admin/translation", {
+      id: duplicateKey.json.data._id,
       translations: { en: "Welcome changed" },
     });
     const copiedKey = copy.json.data.content.title.$t;
-    const copiedTranslation = await request("GET", `/api/translations/${copiedKey}`, undefined, { auth: false });
+    const copiedTranslation = await request("GET", `/api/public/translation?key=${encodeURIComponent(copiedKey)}`, undefined, { auth: false });
     assert(copiedTranslation.json.data.translations.en === "Welcome to Our Company", "a duplicated section keeps its own translation");
-    const changedOriginal = await request("GET", "/api/public/pages/home?lang=en", undefined, { auth: false });
+    const changedOriginal = await request("GET", "/api/public/page?slug=home&lang=en", undefined, { auth: false });
     assert(changedOriginal.json.data.sections[0].content.title === "Welcome changed", "the original section uses the updated translation");
 
-    await request("PATCH", `/api/admin/sections/${services.json.data._id}/status`, { status: "inactive" });
-    const withoutServices = await request("GET", "/api/public/pages/home?lang=en", undefined, { auth: false });
+    await request("PUT", "/api/admin/section", { action: "status", id: services.json.data._id, status: "inactive" });
+    const withoutServices = await request("GET", "/api/public/page?slug=home&lang=en", undefined, { auth: false });
     assert(
       withoutServices.json.data.sections.every((section) => section.type !== "services"),
       "public pages omit inactive sections"
     );
-    await request("PATCH", `/api/admin/sections/${services.json.data._id}/status`, { status: "active" });
+    await request("PUT", "/api/admin/section", { action: "status", id: services.json.data._id, status: "active" });
 
-    const blockedDelete = await request("DELETE", `/api/admin/sections/${hero.json.data._id}`);
+    const blockedDelete = await request("PUT", "/api/admin/section", { action: "delete", id: hero.json.data._id });
     assert(blockedDelete.status === 409, "refuses to delete an assigned section");
 
-    const category = await request("POST", "/api/admin/blog-categories", {
+    const category = await request("PUT", "/api/admin/blog-category", {
       name: { en: "Projects", ar: "المشاريع" },
       slug: "projects",
       description: { en: "Project stories" },
     });
     assert(category.status === 201, "creates a blog category", category.json);
-    const duplicateCategory = await request("POST", "/api/admin/blog-categories", {
+    const duplicateCategory = await request("PUT", "/api/admin/blog-category", {
       name: { en: "Projects" },
       slug: "projects",
     });
     assert(duplicateCategory.status === 409, "rejects a duplicate category slug");
 
-    const post = await request("POST", "/api/admin/blogs", {
+    const post = await request("PUT", "/api/admin/blog", {
       slug: "first-project",
       category: "projects",
       tags: ["construction"],
@@ -266,10 +270,10 @@ const start = async () => {
       },
     });
     assert(post.status === 201 && post.json.data.status === "draft", "creates a bilingual blog", post.json);
-    const hiddenPost = await request("GET", "/api/public/blogs/first-project?lang=ar", undefined, { auth: false });
+    const hiddenPost = await request("GET", "/api/public/blog?slug=first-project&lang=ar", undefined, { auth: false });
     assert(hiddenPost.status === 404, "public blogs omit drafts");
-    await request("POST", `/api/admin/blogs/${post.json.data._id}/publish`);
-    const arabicPost = await request("GET", "/api/public/blogs/first-project?lang=ar", undefined, { auth: false });
+    await request("PUT", "/api/admin/blog", { action: "publish", id: post.json.data._id });
+    const arabicPost = await request("GET", "/api/public/blog?slug=first-project&lang=ar", undefined, { auth: false });
     assert(
       arabicPost.status === 200 &&
         arabicPost.json.data.title === "المشروع الأول" &&
@@ -279,36 +283,36 @@ const start = async () => {
       "returns Arabic blog content",
       arabicPost.json
     );
-    const englishPost = await request("GET", "/api/public/blogs/first-project?lang=en", undefined, { auth: false });
+    const englishPost = await request("GET", "/api/public/blog?slug=first-project&lang=en", undefined, { auth: false });
     assert(englishPost.json.data.title === "First project" && englishPost.json.data.content === "<p>English body</p>", "returns English blog content");
 
-    await request("POST", "/api/admin/blogs", {
+    await request("PUT", "/api/admin/blog", {
       slug: "second-project",
       category: category.json.data._id,
       status: "published",
       locales: { en: { title: "Second project", excerpt: "Another build", content: "<p>Second</p>" } },
     });
-    await request("POST", "/api/admin/blogs", {
+    await request("PUT", "/api/admin/blog", {
       slug: "office-notes",
       status: "published",
       featured: false,
       locales: { en: { title: "Office notes", excerpt: "Internal", content: "<p>Notes</p>" } },
     });
-    const filtered = await request("GET", "/api/public/blogs?lang=en&category=projects&featured=true", undefined, { auth: false });
+    const filtered = await request("GET", "/api/public/blog?lang=en&category=projects&featured=true", undefined, { auth: false });
     assert(
       filtered.status === 200 && filtered.json.data.items.length === 1 && filtered.json.data.items[0].slug === "first-project",
       "filters public blogs",
       filtered.json
     );
     assert(filtered.json.data.pagination.total === 1, "returns pagination");
-    const related = await request("GET", "/api/public/blogs/first-project/related?lang=en", undefined, { auth: false });
+    const related = await request("GET", "/api/public/blog?slug=first-project&view=related&lang=en", undefined, { auth: false });
     assert(related.status === 200 && related.json.data.some((item) => item.slug === "second-project"), "returns related blogs", related.json);
-    const found = await request("GET", "/api/admin/blogs?search=Office&status=published");
+    const found = await request("GET", "/api/admin/blog?search=Office&status=published");
     assert(found.status === 200 && found.json.data.items.some((item) => item.slug === "office-notes"), "searches admin blogs");
 
     const badFile = new FormData();
     badFile.append("file", new Blob(["MZ"], { type: "application/x-msdownload" }), "app.exe");
-    const rejectedFile = await request("POST", "/api/admin/media", undefined, { form: badFile });
+    const rejectedFile = await request("PUT", "/api/admin/media", undefined, { form: badFile });
     assert(rejectedFile.status === 400, "rejects an unsupported media type", rejectedFile.json);
 
     const media = await Media.create({
@@ -319,16 +323,17 @@ const start = async () => {
       url: "https://cdn.example.com/published-photo.jpg",
       folder: "general",
     });
-    await request("PUT", `/api/admin/sections/${services.json.data._id}`, {
+    await request("PUT", "/api/admin/section", {
+      id: services.json.data._id,
       type: "services",
       content: {
         title: "Updated services",
         items: [{ title: "Commercial", description: "Offices", image: media.url }],
       },
     });
-    const mediaBlocked = await request("DELETE", `/api/admin/media/${media._id}`);
+    const mediaBlocked = await request("PUT", "/api/admin/media", { action: "delete", id: media._id });
     assert(mediaBlocked.status === 409, "refuses to delete media used by published content", mediaBlocked.json);
-    const mediaForced = await request("DELETE", `/api/admin/media/${media._id}?force=true`);
+    const mediaForced = await request("PUT", "/api/admin/media", { action: "delete", id: media._id, force: true });
     assert(mediaForced.status === 200, "deletes media when force is set", mediaForced.json);
 
     const invalidContact = await request("POST", "/api/public/contact", { name: "A", email: "not-an-email", message: "Hi" }, { auth: false });
@@ -349,7 +354,7 @@ const start = async () => {
     assert(message.status === 201, "stores a contact submission", message.json);
     const inbox = await request("GET", "/api/admin/contact?search=amina");
     assert(inbox.status === 200 && inbox.json.data.items.length === 1 && inbox.json.data.pagination.page === 1, "lists contact submissions");
-    const updatedMessage = await request("PATCH", `/api/admin/contact/${inbox.json.data.items[0]._id}`, { status: "read" });
+    const updatedMessage = await request("PUT", "/api/admin/contact", { id: inbox.json.data.items[0]._id, status: "read" });
     assert(updatedMessage.status === 200 && updatedMessage.json.data.status === "read", "updates contact status");
 
     const savedSettings = await request("PUT", "/api/admin/settings", {
@@ -367,9 +372,10 @@ const start = async () => {
       publicSettings.json
     );
 
-    const exported = await request("GET", "/api/admin/translations/export");
+    const exported = await request("GET", "/api/admin/translation?view=export");
     assert(exported.status === 200 && exported.json.data.some((item) => item.key === "home.hero.title"), "exports translations");
-    const imported = await request("POST", "/api/admin/translations/import", {
+    const imported = await request("PUT", "/api/admin/translation", {
+      action: "import",
       mode: "upsert",
       items: [
         {
@@ -381,10 +387,11 @@ const start = async () => {
       ],
     });
     assert(imported.status === 200 && imported.json.data.updated === 1, "imports translations", imported.json);
-    const filled = await request("GET", "/api/translations/missing?lang=ar");
+    const filled = await request("GET", "/api/admin/translation?view=missing&lang=ar");
     assert(!filled.json.data.items.some((item) => item.key === "home.hero.subtitle"), "clears a translation after import");
 
-    const reordered = await request("PATCH", "/api/admin/sections/reorder", {
+    const reordered = await request("PUT", "/api/admin/section", {
+      action: "reorder",
       sections: [
         { id: hero.json.data._id, order: 2 },
         { id: services.json.data._id, order: 1 },
@@ -396,7 +403,7 @@ const start = async () => {
       reordered.json
     );
 
-    const publicCategories = await request("GET", "/api/public/blog-categories?lang=ar", undefined, { auth: false });
+    const publicCategories = await request("GET", "/api/public/blog-category?lang=ar", undefined, { auth: false });
     assert(
       publicCategories.status === 200 &&
         publicCategories.json.data.direction === "rtl" &&
@@ -404,24 +411,24 @@ const start = async () => {
       "lists public categories",
       publicCategories.json
     );
-    await request("POST", `/api/admin/blogs/${post.json.data._id}/unpublish`);
-    const unpublished = await request("GET", "/api/public/blogs/first-project?lang=en", undefined, { auth: false });
+    await request("PUT", "/api/admin/blog", { action: "unpublish", id: post.json.data._id });
+    const unpublished = await request("GET", "/api/public/blog?slug=first-project&lang=en", undefined, { auth: false });
     assert(unpublished.status === 404, "unpublish hides a blog");
-    await request("POST", `/api/admin/blogs/${post.json.data._id}/publish`);
+    await request("PUT", "/api/admin/blog", { action: "publish", id: post.json.data._id });
 
     await request("PUT", "/api/admin/settings", { maintenanceMode: true });
-    const closed = await request("GET", "/api/public/pages/home?lang=en", undefined, { auth: false });
+    const closed = await request("GET", "/api/public/page?slug=home&lang=en", undefined, { auth: false });
     assert(closed.status === 503, "maintenance mode blocks public content");
     const settingsWhileClosed = await request("GET", "/api/public/settings?lang=en", undefined, { auth: false });
     assert(settingsWhileClosed.status === 200 && settingsWhileClosed.json.data.maintenanceMode === true, "settings stay available during maintenance");
     await request("PUT", "/api/admin/settings", { maintenanceMode: false });
-    const reopened = await request("GET", "/api/public/pages/home?lang=en", undefined, { auth: false });
+    const reopened = await request("GET", "/api/public/page?slug=home&lang=en", undefined, { auth: false });
     assert(reopened.status === 200, "public content returns after maintenance");
 
-    const pages = await request("GET", "/api/admin/pages?page=1&limit=1");
+    const pages = await request("GET", "/api/admin/page?page=1&limit=1");
     assert(pages.status === 200 && pages.json.data.pagination.limit === 1 && pages.json.data.pagination.total >= 2, "paginates admin pages");
 
-    const languages = await request("GET", "/api/languages", undefined, { auth: false });
+    const languages = await request("GET", "/api/public/language", undefined, { auth: false });
     assert(
       languages.status === 200 &&
         languages.json.data.some((item) => item.code === "en" && item.isDefault && item.direction === "ltr") &&
@@ -430,42 +437,43 @@ const start = async () => {
       languages.json
     );
     const englishLanguage = languages.json.data.find((item) => item.code === "en");
-    const blockedDefaultDelete = await request("DELETE", `/api/languages/${englishLanguage._id}`);
+    const blockedDefaultDelete = await request("PUT", "/api/admin/language", { action: "delete", id: englishLanguage._id });
     assert(blockedDefaultDelete.status === 400, "refuses to delete the default language");
-    const urdu = await request("POST", "/api/languages", {
+    const urdu = await request("PUT", "/api/admin/language", {
       name: "Urdu",
       code: "ur",
       nativeName: "اردو",
     });
     assert(urdu.status === 201 && urdu.json.data.direction === "rtl" && urdu.json.data.isDefault === false, "adds a language", urdu.json);
-    const duplicateLanguage = await request("POST", "/api/languages", { name: "Urdu", code: "ur", nativeName: "اردو" });
+    const duplicateLanguage = await request("PUT", "/api/admin/language", { name: "Urdu", code: "ur", nativeName: "اردو" });
     assert(duplicateLanguage.status === 409, "rejects a duplicate language code");
 
-    const saveLabel = await request("POST", "/api/translations/static", {
+    const saveLabel = await request("PUT", "/api/admin/translation", {
       languageCode: "ar",
       key: "common.save",
       value: "حفظ",
     });
     assert(saveLabel.status === 201 && saveLabel.json.data.value === "حفظ", "creates a static translation", saveLabel.json);
-    const duplicateLabel = await request("POST", "/api/translations/static", {
+    const duplicateLabel = await request("PUT", "/api/admin/translation", {
       languageCode: "ar",
       key: "common.save",
       value: "حفظ",
     });
     assert(duplicateLabel.status === 409, "rejects a duplicate static translation");
-    const staticBundle = await request("GET", "/api/translations/static/ar", undefined, { auth: false });
+    const staticBundle = await request("GET", "/api/public/translation?lang=ar", undefined, { auth: false });
     assert(
       staticBundle.status === 200 && staticBundle.json.data.direction === "rtl" && staticBundle.json.data.translations["common.save"] === "حفظ",
       "returns static translations for a language",
       staticBundle.json
     );
-    const staticBulk = await request("POST", "/api/translations/static/bulk", {
+    const staticBulk = await request("PUT", "/api/admin/translation", {
+      action: "bulk",
       languageCode: "ar",
       items: [{ key: "common.cancel", value: "إلغاء" }],
     });
     assert(staticBulk.status === 200 && staticBulk.json.data.created === 1, "bulk upserts static translations", staticBulk.json);
 
-    const dynamic = await request("POST", "/api/translations/dynamic", {
+    const dynamic = await request("PUT", "/api/admin/translation", {
       languageCode: "ar",
       entityType: "PageSection",
       field: "content.title",
@@ -473,7 +481,7 @@ const start = async () => {
       value: "خدماتنا",
     });
     assert(dynamic.status === 201 && dynamic.json.data.entityType === "Section", "creates a dynamic translation", dynamic.json);
-    const duplicateDynamic = await request("POST", "/api/translations/dynamic", {
+    const duplicateDynamic = await request("PUT", "/api/admin/translation", {
       languageCode: "ar",
       entityType: "Section",
       field: "content.title",
@@ -481,7 +489,7 @@ const start = async () => {
       value: "خدماتنا",
     });
     assert(duplicateDynamic.status === 409, "rejects a duplicate dynamic translation");
-    const defaultDynamic = await request("POST", "/api/translations/dynamic", {
+    const defaultDynamic = await request("PUT", "/api/admin/translation", {
       languageCode: "en",
       entityType: "Section",
       field: "content.title",
@@ -489,7 +497,7 @@ const start = async () => {
       value: "Our Services",
     });
     assert(defaultDynamic.status === 400, "keeps default-language content on the record");
-    const blockedField = await request("POST", "/api/translations/dynamic", {
+    const blockedField = await request("PUT", "/api/admin/translation", {
       languageCode: "ar",
       entityType: "Section",
       field: "content.slug",
@@ -498,16 +506,16 @@ const start = async () => {
     });
     assert(blockedField.status === 400, "rejects a non-translatable field");
 
-    const englishPage = await request("GET", "/api/public/pages/home?lang=en", undefined, { auth: false });
-    const arabicPage = await request("GET", "/api/public/pages/home?lang=ar", undefined, { auth: false });
-    const urduPage = await request("GET", "/api/public/pages/home?lang=ur", undefined, { auth: false });
+    const englishPage = await request("GET", "/api/public/page?slug=home&lang=en", undefined, { auth: false });
+    const arabicPage = await request("GET", "/api/public/page?slug=home&lang=ar", undefined, { auth: false });
+    const urduPage = await request("GET", "/api/public/page?slug=home&lang=ur", undefined, { auth: false });
     const englishServices = englishPage.json.data.sections.find((section) => section.type === "services");
     const arabicServices = arabicPage.json.data.sections.find((section) => section.type === "services");
     const urduServices = urduPage.json.data.sections.find((section) => section.type === "services");
     assert(englishServices.content.title === "Updated services", "English page content stays on the record", englishPage.json);
     assert(arabicServices.content.title === "خدماتنا", "Arabic page content comes from dynamic translations", arabicPage.json);
     assert(urduServices.content.title === "Updated services", "a missing dynamic translation falls back to the default language", urduPage.json);
-    const coverage = await request("GET", "/api/admin/translations/dynamic?entityType=Section&languageCode=ur&missing=true&page=1&limit=10");
+    const coverage = await request("GET", "/api/admin/translation?kind=dynamic&entityType=Section&languageCode=ur&missing=true&page=1&limit=10");
     assert(
       coverage.status === 200 && coverage.json.data.items.some((item) => String(item.entityId) === String(services.json.data._id)),
       "lists content that is missing a translation",
