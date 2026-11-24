@@ -88,7 +88,9 @@ GET /api/admin/page?page=1&limit=10&status=published&search=home
 
 ### Section
 
-Add a section. `PUT /api/admin/section`
+Add a section. `PUT /api/admin/section`. The `type` field chooses the `content` shape. A hero is one block. Services and features are a title plus a list of items. Attach the new section to a page with `PUT /api/admin/page` and `{ "id", "sections": [{ "section": "SECTION_ID", "order": 1 }] }`.
+
+Hero. One title, one description, and one button.
 
 ```json
 {
@@ -98,10 +100,194 @@ Add a section. `PUT /api/admin/section`
   "status": "active",
   "content": {
     "title": "Building spaces that last",
-    "description": "Commercial and residential construction.",
+    "subtitle": "Commercial and residential construction",
+    "description": "Disciplined construction for offices, homes, and mixed-use developments.",
+    "image": "",
     "button": { "text": "Start a project", "link": "#contact" }
   }
 }
+```
+
+Services. Repeat `items` for each service.
+
+```json
+{
+  "name": "Services",
+  "type": "services",
+  "order": 3,
+  "status": "active",
+  "content": {
+    "title": "Full-spectrum construction",
+    "description": "Professional construction services.",
+    "items": [
+      { "number": "01", "title": "Commercial Construction", "description": "Offices, retail, and mixed-use buildings.", "image": "" },
+      { "number": "02", "title": "Residential Construction", "description": "Homes and apartment buildings.", "image": "" }
+    ]
+  }
+}
+```
+
+Features. Same list shape as services. Each item has an `icon` instead of a number.
+
+```json
+{
+  "name": "Features",
+  "type": "features",
+  "order": 4,
+  "status": "active",
+  "content": {
+    "title": "What you get",
+    "description": "The parts of a typical build.",
+    "items": [
+      { "icon": "plan", "title": "Documented scope", "description": "Budgets and schedules are written down before work starts." },
+      { "icon": "site", "title": "One site lead", "description": "Trades and updates run through a single lead." }
+    ]
+  }
+}
+```
+
+The other types use the same request. Only `type` and `content` change.
+
+Header:
+
+```json
+{
+  "name": "Header",
+  "type": "header",
+  "order": 0,
+  "content": {
+    "button": { "text": "Get a Quote", "link": "#contact" },
+    "items": [{ "label": "Services", "link": "#services" }]
+  },
+  "settings": { "logo": "", "phone": "+1 (000) 000-0000", "email": "hello@example.com" }
+}
+```
+
+About:
+
+```json
+{
+  "name": "About",
+  "type": "about",
+  "content": {
+    "title": "A builder focused on the long term",
+    "subtitle": "About the company",
+    "description": "We plan carefully and stay accountable through handover.",
+    "image": "",
+    "button": { "text": "Our process", "link": "#process" },
+    "items": [{ "title": "Years", "value": "25+", "description": "Delivering commercial and residential work." }]
+  }
+}
+```
+
+Projects:
+
+```json
+{
+  "name": "Projects",
+  "type": "projects",
+  "content": {
+    "title": "Selected work",
+    "items": [{ "title": "Harbor House", "category": "Residential", "description": "A four-storey residential building.", "image": "", "link": "" }]
+  }
+}
+```
+
+Process:
+
+```json
+{
+  "name": "Process",
+  "type": "process",
+  "content": {
+    "title": "How a project moves",
+    "items": [{ "number": "01", "title": "Consult", "description": "Walk the site and confirm the brief." }]
+  }
+}
+```
+
+Why us:
+
+```json
+{
+  "name": "Why us",
+  "type": "why-us",
+  "content": {
+    "title": "Why teams hire us",
+    "items": [{ "icon": "plan", "title": "Documented scope", "description": "Budgets and schedules are written down before work starts." }]
+  }
+}
+```
+
+Statistics, testimonials, team, and FAQ are lists too.
+
+```json
+{ "name": "Statistics", "type": "statistics", "content": { "title": "By the numbers", "items": [{ "label": "Projects", "value": "180+" }] } }
+```
+
+```json
+{ "name": "Testimonials", "type": "testimonials", "content": { "title": "Client notes", "items": [{ "name": "Amira Shah", "position": "Development Manager", "company": "North Exchange", "message": "Clear communication through handover.", "image": "" }] } }
+```
+
+```json
+{ "name": "Team", "type": "team", "content": { "title": "Site team", "items": [{ "name": "Lina Haddad", "role": "Project lead", "bio": "Runs commercial sites from first visit to handover.", "image": "" }] } }
+```
+
+```json
+{ "name": "FAQ", "type": "faq", "content": { "title": "Questions", "items": [{ "question": "How long does a fit-out take?", "answer": "A typical office fit-out is planned in weeks, then built to that schedule." }] } }
+```
+
+Gallery uses `images`. Pricing uses `plans`. Partners uses `items`.
+
+```json
+{ "name": "Gallery", "type": "gallery", "content": { "title": "On site", "images": [{ "image": "", "alt": "Finished lobby", "caption": "North Exchange lobby" }] } }
+```
+
+```json
+{ "name": "Pricing", "type": "pricing", "content": { "title": "Ways to start", "plans": [{ "name": "Consult", "price": "Fixed", "period": "one visit", "description": "A site walk and a written next step.", "features": ["Site visit"], "button": { "text": "Book", "link": "#contact" } }] } }
+```
+
+```json
+{ "name": "Partners", "type": "partners", "content": { "title": "Partners", "items": [{ "name": "North Exchange", "logo": "", "link": "https://example.com" }] } }
+```
+
+Call to action matches the hero fields.
+
+```json
+{ "name": "Call to action", "type": "cta", "content": { "title": "Planning a build?", "subtitle": "Tell us about the site", "description": "Share the location and timeline.", "button": { "text": "Request a consultation", "link": "#contact" } } }
+```
+
+Contact and footer keep addresses and copyright in `settings`. The visible lines stay in `content`.
+
+```json
+{
+  "name": "Contact",
+  "type": "contact",
+  "content": {
+    "title": "Contact",
+    "description": "Call, email, or send a note about your project.",
+    "items": [{ "label": "Projects desk", "value": "hello@example.com", "type": "email" }]
+  },
+  "settings": { "address": "100 Builder Street", "hours": "Monday to Friday, 8:00 to 17:00", "email": "hello@example.com", "phone": "+1 (000) 000-0000" }
+}
+```
+
+```json
+{
+  "name": "Footer",
+  "type": "footer",
+  "content": {
+    "description": "Commercial and residential construction.",
+    "items": [{ "group": "Explore", "label": "Services", "link": "#services" }]
+  },
+  "settings": { "copyright": "All rights reserved." }
+}
+```
+
+`custom` accepts any content object.
+
+```json
+{ "name": "Custom", "type": "custom", "content": { "heading": "Anything the other types do not cover" } }
 ```
 
 Update a section.
@@ -501,7 +687,7 @@ Auth: Bearer. One route, `/api/admin/section`.
 
 Types: `header`, `hero`, `about`, `services`, `features`, `statistics`, `testimonials`, `team`, `gallery`, `pricing`, `faq`, `contact`, `cta`, `partners`, `footer`, `projects`, `process`, `why-us`, `custom`.
 
-The same type can be used more than once. `custom` accepts a free content object up to 100KB. Other types validate their own fields. Text fields accept either a string or `{ "$t": "key" }`.
+The same type can be used more than once. `content` must match `type`. Copy the body from the examples above: a hero is one block, and services and features are lists of items. `custom` accepts a free content object up to 100KB. Text fields accept either a string or `{ "$t": "key" }`.
 
 `status` is `active` or `inactive`. `order` is the section's own order. The order stored on a page is separate and is what the public page uses.
 

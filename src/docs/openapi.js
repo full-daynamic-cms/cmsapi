@@ -5,8 +5,8 @@ const envelope = (description) => ({
   content: {
     "application/json": {
       schema: {
-        type: "object",
-        properties: {
+      type: "object",
+      properties: {
           status: { type: "boolean", example: true },
           message: { type: "string" },
           data: { type: "object" },
@@ -21,8 +21,8 @@ const error = (description, example) => ({
   content: {
     "application/json": {
       schema: {
-        type: "object",
-        properties: {
+  type: "object",
+  properties: {
           status: { type: "boolean", example: false },
           message: { type: "string", example },
           data: { nullable: true, example: null },
@@ -100,8 +100,121 @@ const pageBody = {
   },
 };
 
+const sectionOf = (name, type, order, content, extra = {}) => ({
+  summary: name,
+  value: { name, type, order, status: "active", content, ...extra },
+});
+
+const sectionExamples = {
+  hero: sectionOf("Hero", "hero", 1, {
+    title: "Building spaces that last",
+    subtitle: "Commercial and residential construction",
+    description: "Disciplined construction for offices, homes, and mixed-use developments.",
+    image: "",
+    button: { text: "Start a project", link: "#contact" },
+  }),
+  services: sectionOf("Services", "services", 3, {
+    title: "Full-spectrum construction",
+    description: "Professional construction services.",
+    items: [
+      { number: "01", title: "Commercial Construction", description: "Offices, retail, and mixed-use buildings.", image: "" },
+      { number: "02", title: "Residential Construction", description: "Homes and apartment buildings.", image: "" },
+    ],
+  }),
+  features: sectionOf("Features", "features", 4, {
+    title: "What you get",
+    description: "The parts of a typical build.",
+    items: [
+      { icon: "plan", title: "Documented scope", description: "Budgets and schedules are written down before work starts." },
+      { icon: "site", title: "One site lead", description: "Trades and updates run through a single lead." },
+    ],
+  }),
+  header: sectionOf("Header", "header", 0, {
+    button: { text: "Get a Quote", link: "#contact" },
+    items: [
+      { label: "About", link: "#about" },
+      { label: "Services", link: "#services" },
+    ],
+  }, { settings: { logo: "", phone: "+1 (000) 000-0000", email: "hello@example.com" } }),
+  about: sectionOf("About", "about", 2, {
+    title: "A builder focused on the long term",
+    subtitle: "About the company",
+    description: "We plan carefully and stay accountable through handover.",
+    image: "",
+    button: { text: "Our process", link: "#process" },
+    items: [{ title: "Years", value: "25+", description: "Delivering commercial and residential work." }],
+  }),
+  statistics: sectionOf("Statistics", "statistics", 5, {
+    title: "By the numbers",
+    items: [{ label: "Projects", value: "180+" }],
+  }),
+  testimonials: sectionOf("Testimonials", "testimonials", 6, {
+    title: "Client notes",
+    items: [{ name: "Amira Shah", position: "Development Manager", company: "North Exchange", message: "Clear communication through handover.", image: "" }],
+  }),
+  team: sectionOf("Team", "team", 7, {
+    title: "Site team",
+    items: [{ name: "Lina Haddad", role: "Project lead", bio: "Runs commercial sites from first visit to handover.", image: "" }],
+  }),
+  gallery: sectionOf("Gallery", "gallery", 8, {
+    title: "On site",
+    description: "Recent work.",
+    images: [{ image: "", alt: "Finished lobby", caption: "North Exchange lobby" }],
+  }),
+  pricing: sectionOf("Pricing", "pricing", 9, {
+    title: "Ways to start",
+    plans: [{ name: "Consult", price: "Fixed", period: "one visit", description: "A site walk and a written next step.", features: ["Site visit", "Written brief"], button: { text: "Book", link: "#contact" } }],
+  }),
+  faq: sectionOf("FAQ", "faq", 10, {
+    title: "Questions",
+    items: [{ question: "How long does a fit-out take?", answer: "A typical office fit-out is planned in weeks, then built to that schedule." }],
+  }),
+  contact: sectionOf("Contact", "contact", 11, {
+    title: "Contact",
+    description: "Call, email, or send a note about your project.",
+    items: [
+      { label: "Projects desk", value: "hello@example.com", type: "email" },
+      { label: "Site line", value: "+1 (000) 000-0000", type: "phone" },
+    ],
+  }, { settings: { email: "hello@example.com", phone: "+1 (000) 000-0000", address: "100 Builder Street", hours: "Monday to Friday, 8:00 to 17:00" } }),
+  cta: sectionOf("Call to action", "cta", 12, {
+    title: "Planning a build?",
+    subtitle: "Tell us about the site",
+    description: "Share the location, timeline, and what you want built.",
+    button: { text: "Request a consultation", link: "#contact" },
+  }),
+  partners: sectionOf("Partners", "partners", 13, {
+    title: "Partners",
+    items: [{ name: "North Exchange", logo: "", link: "https://example.com" }],
+  }),
+  footer: sectionOf("Footer", "footer", 14, {
+    description: "Commercial and residential construction.",
+    items: [
+      { group: "Explore", label: "Services", link: "#services" },
+      { group: "Company", label: "Contact", link: "#contact" },
+    ],
+  }, { settings: { copyright: "All rights reserved." } }),
+  projects: sectionOf("Projects", "projects", 15, {
+    title: "Selected work",
+    items: [{ title: "Harbor House", category: "Residential", description: "A four-storey residential building.", image: "", link: "" }],
+  }),
+  process: sectionOf("Process", "process", 16, {
+    title: "How a project moves",
+    items: [{ number: "01", title: "Consult", description: "Walk the site and confirm the brief." }],
+  }),
+  whyUs: sectionOf("Why us", "why-us", 17, {
+    title: "Why teams hire us",
+    items: [{ icon: "plan", title: "Documented scope", description: "Budgets and schedules are written down before work starts." }],
+  }),
+  custom: sectionOf("Custom", "custom", 18, {
+    heading: "Anything the other types do not cover",
+    notes: ["Free object", "Up to 100KB"],
+  }),
+};
+
 const sectionBody = {
   type: "object",
+  description: "Set type, then match content to that type. Use the Hero, Services, or Features example.",
   properties: {
     id: { type: "string", description: "Send this to update. Leave it out to add." },
     action: { type: "string", enum: ["status", "reorder", "duplicate", "delete"] },
@@ -114,20 +227,11 @@ const sectionBody = {
     },
     order: { type: "integer", example: 1 },
     status: { type: "string", enum: ["active", "inactive"], example: "active" },
-    content: {
-      type: "object",
-      example: { title: "Building spaces that last", description: "Commercial and residential construction.", button: { text: "Start a project", link: "#contact" } },
-    },
+    content: { type: "object" },
     settings: { type: "object" },
     sections: { type: "array", items: { type: "object" }, description: "Used with action reorder." },
   },
-  example: {
-    name: "Hero",
-    type: "hero",
-    order: 1,
-    status: "active",
-    content: { title: "Building spaces that last", description: "Commercial and residential construction." },
-  },
+  example: sectionExamples.hero.value,
 };
 
 const translationBody = {
@@ -263,32 +367,32 @@ module.exports = {
     },
   },
   paths: {
-    "/api/health": {
+  "/api/health": {
       get: { tags: ["Health"], summary: "Health check", responses: { 200: envelope("Server is running") } },
-    },
-    "/api/auth/register": {
+  },
+  "/api/auth/register": {
       post: {
         tags: ["Auth"],
-        summary: "Register",
+      summary: "Register",
         requestBody: jsonBody({
-          type: "object",
+        type: "object",
           example: { name: "Site Admin", email: "admin@example.com", password: "password123" },
         }),
         responses: { 201: envelope("Registered"), 400: error("Validation failed", "Validation failed") },
       },
-    },
-    "/api/auth/login": {
+  },
+  "/api/auth/login": {
       post: {
         tags: ["Auth"],
-        summary: "Log in",
+      summary: "Log in",
         requestBody: jsonBody({ type: "object", example: { email: "admin@example.com", password: "password123" } }),
         responses: { 200: envelope("Logged in"), 401: error("Invalid credentials", "Invalid email or password") },
       },
-    },
-    "/api/auth/me": {
+  },
+  "/api/auth/me": {
       get: {
         tags: ["Auth"],
-        summary: "Current user",
+      summary: "Current user",
         security: [{ bearerAuth: [] }],
         responses: { 200: envelope("Profile"), 401: error("Unauthorized", "Authentication is required") },
       },
@@ -302,7 +406,14 @@ module.exports = {
     },
     "/api/admin/section": {
       get: adminRead("Section", "Read a section", [recordId, query("type", { type: "string", example: "hero" }), query("status", { type: "string" }), query("search", { type: "string" }), ...paging]),
-      put: adminWrite("Section", "Add or update a section", sectionBody),
+      put: {
+        ...adminWrite("Section", "Add or update a section", sectionBody),
+        description: "Choose an example for the section type. Hero is one block. Services and features are a title plus a list of items. Send type again whenever content changes.",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: sectionBody, examples: sectionExamples } },
+        },
+      },
     },
     "/api/public/translation": {
       get: read("Translation", "Read a translation bundle or one key", [lang, query("key", { type: "string", example: "home.hero.title" })]),
@@ -342,21 +453,21 @@ module.exports = {
         ...adminWrite("Media", "Add or update media", mediaBody),
         description: "Send JSON to update `altText` or `folder`. Send multipart form data with a `file` field to add a file.",
         requestBody: {
-          required: true,
-          content: {
+        required: true,
+        content: {
             "application/json": { schema: mediaBody },
-            "multipart/form-data": {
-              schema: {
-                type: "object",
-                properties: {
+          "multipart/form-data": {
+            schema: {
+              type: "object",
+              properties: {
                   file: { type: "string", format: "binary" },
                   folder: { type: "string", example: "projects" },
                   altText: { type: "string", example: "Site photo" },
-                },
               },
             },
           },
         },
+      },
       },
     },
     "/api/public/contact": {
@@ -370,20 +481,20 @@ module.exports = {
     "/api/admin/contact": {
       get: adminRead("Contact", "Read contact messages", [recordId, query("status", { type: "string", example: "new" }), query("search", { type: "string" }), ...paging]),
       put: adminWrite("Contact", "Update a contact message", contactBody),
-    },
-    "/api/uploads": {
+  },
+  "/api/uploads": {
       post: {
         tags: ["Uploads"],
         summary: "Upload an image",
         security: [{ bearerAuth: [] }],
         requestBody: {
-          required: true,
-          content: {
-            "multipart/form-data": {
+        required: true,
+        content: {
+          "multipart/form-data": {
               schema: { type: "object", properties: { image: { type: "string", format: "binary" }, sectionKey: { type: "string", example: "hero" } } },
+              },
             },
           },
-        },
         responses: { 201: envelope("Uploaded"), 401: error("Unauthorized", "Authentication is required") },
       },
       delete: {
