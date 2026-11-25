@@ -9,6 +9,12 @@ const {
 } = require("./helpers");
 const { SECTION_TYPES, SECTION_STATUSES } = require("../config/cms");
 
+const looseText = (max) =>
+  Joi.alternatives().try(
+    translatable(max),
+    Joi.number().custom((value) => String(value))
+  );
+
 const button = Joi.object({
   text: translatable(200),
   link: Joi.string().trim().allow("").max(2000),
@@ -53,10 +59,21 @@ const CONTENT_SCHEMAS = {
       .max(40),
   }),
   services: listSection(
-    item({ number: translatable(20), title: translatable(200).required(), description: translatable(5000), ...imageFields })
+    item({
+      number: looseText(20),
+      icon: Joi.string().trim().allow("").max(120),
+      title: translatable(200).required(),
+      description: translatable(5000),
+      ...imageFields,
+    })
   ),
   features: listSection(
-    item({ icon: Joi.string().trim().allow("").max(120), title: translatable(200).required(), description: translatable(5000) })
+    item({
+      icon: Joi.string().trim().allow("").max(120),
+      number: looseText(20),
+      title: translatable(200).required(),
+      description: translatable(5000),
+    })
   ),
   statistics: listSection(item({ label: translatable(120).required(), value: translatable(60).required() })),
   testimonials: listSection(
@@ -241,6 +258,38 @@ const assertSettings = (settings = {}) => {
   return value;
 };
 
+const CONTENT_KEYS = ["title", "subtitle", "description", "image", "imagePublicId", "button", "items", "images", "plans"];
+
+const nestSectionContent = (body) => {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return body;
+  }
+
+  const content = { ...(body.content && typeof body.content === "object" && !Array.isArray(body.content) ? body.content : {}) };
+  const next = { ...body };
+  let moved = false;
+
+  for (const key of CONTENT_KEYS) {
+    if (next[key] === undefined) {
+      continue;
+    }
+
+    if (content[key] === undefined) {
+      content[key] = next[key];
+    }
+
+    delete next[key];
+    moved = true;
+  }
+
+  if (!moved) {
+    return body;
+  }
+
+  next.content = content;
+  return next;
+};
+
 const createSchema = Joi.object({
   name: Joi.string().trim().min(1).max(120).required(),
   type: Joi.string()
@@ -266,13 +315,26 @@ const updateSchema = Joi.object({
   .unknown(false);
 
 const validateCreateSection = (body) => {
-  const value = validateBody(createSchema, body);
+  const value = validateBody(createSchema, nestSectionContent(body));
   value.content = assertContent(value.type, value.content || {});
   value.settings = assertSettings(value.settings || {});
   return value;
 };
 
-const validateUpdateSection = (body) => validateBody(updateSchema, body);
+const validateUpdateSection = (body) => {
+  const nested = nestSectionContent(body);
+  const value = validateBody(updateSchema, nested);
+
+  if (value.content && value.type) {
+    value.content = assertContent(value.type, value.content);
+  }
+
+  if (value.settings) {
+    value.settings = assertSettings(value.settings);
+  }
+
+  return value;
+};
 
 const listQuery = Joi.object({
   ...pagination,
