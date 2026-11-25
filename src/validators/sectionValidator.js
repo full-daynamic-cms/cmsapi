@@ -25,7 +25,7 @@ const imageFields = {
   imagePublicId: Joi.string().trim().allow("").max(500),
 };
 
-const item = (shape) => Joi.object({ ...shape }).unknown(false);
+const item = (shape) => Joi.object({ ...shape }).unknown(true);
 
 const titled = (extra = {}) =>
   Joi.object({
