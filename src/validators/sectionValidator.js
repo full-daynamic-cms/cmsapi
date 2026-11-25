@@ -45,27 +45,29 @@ const listSection = (itemSchema, itemName = "items") =>
     title: translatable(300),
     subtitle: translatable(500),
     description: translatable(20000),
+    ...imageFields,
+    button,
     [itemName]: Joi.array().items(itemSchema).max(100),
-  }).unknown(false);
+  }).unknown(true);
 
 const CONTENT_SCHEMAS = {
   header: Joi.object({
     button,
     items: Joi.array()
-      .items(item({ label: translatable(120).required(), link: Joi.string().trim().min(1).max(2000).required() }))
+      .items(item({ label: translatable(120), link: Joi.string().trim().allow("").max(2000) }))
       .max(50),
   }).unknown(false),
   hero: titled(),
   about: titled({
     items: Joi.array()
-      .items(item({ title: translatable(120).required(), value: translatable(60), description: translatable(1000) }))
+      .items(item({ title: translatable(120), value: translatable(60), description: translatable(1000) }))
       .max(40),
   }),
   services: listSection(
     item({
       number: looseText(20),
       icon: Joi.string().trim().allow("").max(120),
-      title: translatable(200).required(),
+      title: translatable(200),
       description: translatable(5000),
       ...imageFields,
     })
@@ -74,23 +76,23 @@ const CONTENT_SCHEMAS = {
     item({
       icon: Joi.string().trim().allow("").max(120),
       number: looseText(20),
-      title: translatable(200).required(),
+      title: translatable(200),
       description: translatable(5000),
     })
   ),
-  statistics: listSection(item({ label: translatable(120).required(), value: translatable(60).required() })),
+  statistics: listSection(item({ label: translatable(120), value: translatable(60) })),
   testimonials: listSection(
     item({
-      name: translatable(120).required(),
+      name: translatable(120),
       position: translatable(120),
       company: translatable(160),
-      message: translatable(5000).required(),
+      message: translatable(5000),
       ...imageFields,
     })
   ),
   team: listSection(
     item({
-      name: translatable(120).required(),
+      name: translatable(120),
       role: translatable(120),
       bio: translatable(2000),
       ...imageFields,
@@ -109,7 +111,7 @@ const CONTENT_SCHEMAS = {
     plans: Joi.array()
       .items(
         item({
-          name: translatable(120).required(),
+          name: translatable(120),
           price: translatable(40),
           period: translatable(40),
           description: translatable(1000),
@@ -119,15 +121,15 @@ const CONTENT_SCHEMAS = {
       )
       .max(20),
   }).unknown(false),
-  faq: listSection(item({ question: translatable(300).required(), answer: translatable(5000).required() })),
+  faq: listSection(item({ question: translatable(300), answer: translatable(5000) })),
   contact: Joi.object({
     title: translatable(300),
     description: translatable(5000),
     items: Joi.array()
       .items(
         item({
-          label: translatable(120).required(),
-          value: translatable(500).required(),
+          label: translatable(120),
+          value: translatable(500),
           type: Joi.string().trim().allow("").max(50),
         })
       )
@@ -136,7 +138,7 @@ const CONTENT_SCHEMAS = {
   cta: titled(),
   partners: listSection(
     item({
-      name: translatable(120).required(),
+      name: translatable(120),
       logo: Joi.string().trim().allow("").max(4000),
       logoPublicId: Joi.string().trim().allow("").max(500),
       link: Joi.string().trim().allow("").max(2000),
@@ -148,15 +150,15 @@ const CONTENT_SCHEMAS = {
       .items(
         item({
           group: translatable(80),
-          label: translatable(120).required(),
-          link: Joi.string().trim().min(1).max(2000).required(),
+          label: translatable(120),
+          link: Joi.string().trim().allow("").max(2000),
         })
       )
       .max(80),
   }).unknown(false),
   projects: listSection(
     item({
-      title: translatable(200).required(),
+      title: translatable(200),
       category: translatable(120),
       description: translatable(5000),
       link: Joi.string().trim().allow("").max(2000),
@@ -164,32 +166,13 @@ const CONTENT_SCHEMAS = {
     })
   ),
   process: listSection(
-    item({ number: translatable(20), title: translatable(200).required(), description: translatable(5000) })
+    item({ number: translatable(20), title: translatable(200), description: translatable(5000) })
   ),
   "why-us": listSection(
-    item({ icon: Joi.string().trim().allow("").max(120), title: translatable(200).required(), description: translatable(5000) })
+    item({ icon: Joi.string().trim().allow("").max(120), title: translatable(200), description: translatable(5000) })
   ),
   custom: Joi.object().unknown(true),
 };
-
-const TITLE_TYPES = new Set([
-  "hero",
-  "about",
-  "services",
-  "features",
-  "statistics",
-  "testimonials",
-  "team",
-  "gallery",
-  "pricing",
-  "faq",
-  "contact",
-  "cta",
-  "partners",
-  "projects",
-  "process",
-  "why-us",
-]);
 
 const settingsSchema = Joi.object().unknown(true).max(80);
 
@@ -218,17 +201,6 @@ const assertContent = (type, content = {}) => {
     throw new (require("../utils/ApiError"))(400, "Validation failed", [
       { field: "content", message: "content is too large" },
     ]);
-  }
-
-  if (TITLE_TYPES.has(type)) {
-    const title = value.title;
-    const missing = title == null || title === "" || (typeof title === "string" && !title.trim());
-
-    if (missing) {
-      throw new (require("../utils/ApiError"))(400, "Validation failed", [
-        { field: "content.title", message: "content.title is required" },
-      ]);
-    }
   }
 
   return value;
