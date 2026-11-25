@@ -27,6 +27,8 @@ const imageFields = {
 
 const item = (shape) => Joi.object({ ...shape }).unknown(true);
 
+const flexibleItems = Joi.array().items(item({})).max(100);
+
 const titled = (extra = {}) =>
   Joi.object({
     title: translatable(300),
@@ -34,6 +36,7 @@ const titled = (extra = {}) =>
     description: translatable(20000),
     ...imageFields,
     button,
+    items: flexibleItems,
     ...extra,
   }).unknown(false);
 
