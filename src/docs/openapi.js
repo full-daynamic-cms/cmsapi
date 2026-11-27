@@ -408,24 +408,51 @@ module.exports = {
       get: adminRead("Section", "Read a section", [recordId, query("type", { type: "string", example: "hero" }), query("status", { type: "string" }), query("search", { type: "string" }), ...paging]),
       put: {
         ...adminWrite("Section", "Add or update a section", sectionBody),
-        description: "Send JSON, or send multipart form data when the section includes images. In form data, put the section fields in `content` as JSON and send image files as `image` or `items.0.image`.",
+        description: "Send this request as multipart form data. Put the section text in the content field as JSON. Send the section picture as image, and each item picture as items.0.image, items.1.image, and so on.",
         requestBody: {
           required: true,
           content: {
-            "application/json": { schema: sectionBody, examples: sectionExamples },
             "multipart/form-data": {
               schema: {
                 type: "object",
+                required: ["name", "type", "content"],
                 properties: {
                   name: { type: "string", example: "Hero" },
-                  type: { type: "string", example: "hero" },
+                  type: {
+                    type: "string",
+                    enum: ["header", "hero", "about", "services", "features", "statistics", "testimonials", "team", "gallery", "pricing", "faq", "contact", "cta", "partners", "footer", "projects", "process", "why-us", "custom"],
+                    example: "hero",
+                  },
                   order: { type: "integer", example: 1 },
-                  status: { type: "string", example: "active" },
-                  content: { type: "string", example: "{\"title\":\"Hero\",\"items\":[{\"title\":\"Photo\"}]}" },
-                  image: { type: "string", format: "binary", description: "Section image. Stored on content.image." },
+                  status: { type: "string", enum: ["active", "inactive"], example: "active" },
+                  id: { type: "string", description: "Send this to update. Leave it out to add." },
+                  content: {
+                    type: "string",
+                    description: "JSON object for the section text. Image files are sent separately and stored on content.image and content.items[].image.",
+                    example: "{\"title\":\"Building spaces that last\",\"subtitle\":\"Commercial and residential construction\",\"description\":\"Disciplined construction for offices, homes, and mixed-use developments.\",\"button\":{\"text\":\"Start a project\",\"link\":\"#contact\"},\"items\":[{\"title\":\"Photo\",\"label\":\"Testing\"}]}",
+                  },
+                  settings: { type: "string", description: "Optional JSON object, used by header, contact, and footer." },
+                  image: { type: "string", format: "binary", description: "Section image. Saved as content.image." },
                   "items.0.image": { type: "string", format: "binary", description: "Image for the first item." },
+                  "items.1.image": { type: "string", format: "binary", description: "Image for the second item." },
                 },
               },
+              examples: Object.fromEntries(
+                Object.entries(sectionExamples).map(([key, example]) => [
+                  key,
+                  {
+                    summary: example.summary,
+                    value: {
+                      name: example.value.name,
+                      type: example.value.type,
+                      order: example.value.order,
+                      status: example.value.status,
+                      content: JSON.stringify(example.value.content),
+                      ...(example.value.settings ? { settings: JSON.stringify(example.value.settings) } : {}),
+                    },
+                  },
+                ])
+              ),
             },
           },
         },

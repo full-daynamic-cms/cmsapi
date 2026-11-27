@@ -88,67 +88,45 @@ GET /api/admin/page?page=1&limit=10&status=published&search=home
 
 ### Section
 
-Add a section. `PUT /api/admin/section`. The `type` field chooses the `content` shape. A hero is one block. Services and features are a title plus a list of items. Attach the new section to a page with `PUT /api/admin/page` and `{ "id", "sections": [{ "section": "SECTION_ID", "order": 1 }] }`.
+Add a section with `PUT /api/admin/section` as `multipart/form-data`. The text goes in the `content` field as JSON. The pictures are separate file fields: `image` for the section, and `items.0.image` for the first item. JPEG, PNG, WEBP, GIF, and AVIF files up to 5MB are accepted. Attach the new section to a page with `PUT /api/admin/page` and `{ "id", "sections": [{ "section": "SECTION_ID", "order": 1 }] }`.
 
-To upload images, send `multipart/form-data` instead of JSON. Put the text in a `content` field as JSON, and send the files under `image` for the section image or `items.0.image` for the first item. The saved section stores the image URL on that field. JPEG, PNG, WEBP, GIF, and AVIF files up to 5MB are accepted.
+Hero.
 
-Hero. One title, one description, and one button.
-
-```json
-{
-  "name": "Hero",
-  "type": "hero",
-  "order": 1,
-  "status": "active",
-  "content": {
-    "title": "Building spaces that last",
-    "subtitle": "Commercial and residential construction",
-    "description": "Disciplined construction for offices, homes, and mixed-use developments.",
-    "image": "",
-    "button": { "text": "Start a project", "link": "#contact" }
-  }
-}
+```text
+name: Hero
+type: hero
+order: 1
+status: active
+content: {"title":"Building spaces that last","subtitle":"Commercial and residential construction","description":"Disciplined construction for offices, homes, and mixed-use developments.","button":{"text":"Start a project","link":"#contact"},"items":[{"title":"Photo","label":"Testing"}]}
+image: (file)
+items.0.image: (file)
 ```
 
-Services. Repeat `items` for each service.
+Services. Repeat an item in `content`, and add `items.1.image` when that item has a picture.
 
-```json
-{
-  "name": "Services",
-  "type": "services",
-  "order": 3,
-  "status": "active",
-  "content": {
-    "title": "Full-spectrum construction",
-    "description": "Professional construction services.",
-    "items": [
-      { "number": "01", "title": "Commercial Construction", "description": "Offices, retail, and mixed-use buildings.", "image": "" },
-      { "number": "02", "title": "Residential Construction", "description": "Homes and apartment buildings.", "image": "" }
-    ]
-  }
-}
+```text
+name: Services
+type: services
+order: 3
+status: active
+content: {"title":"Full-spectrum construction","description":"Professional construction services.","items":[{"number":"01","title":"Commercial Construction","description":"Offices, retail, and mixed-use buildings."},{"number":"02","title":"Residential Construction","description":"Homes and apartment buildings."}]}
+image: (file)
+items.0.image: (file)
+items.1.image: (file)
 ```
 
-Features. Same list shape as services. Each item has an `icon` instead of a number.
+Features. Same form. Each item in `content` uses `icon`.
 
-```json
-{
-  "name": "Features",
-  "type": "features",
-  "order": 4,
-  "status": "active",
-  "content": {
-    "title": "What you get",
-    "description": "The parts of a typical build.",
-    "items": [
-      { "icon": "plan", "title": "Documented scope", "description": "Budgets and schedules are written down before work starts." },
-      { "icon": "site", "title": "One site lead", "description": "Trades and updates run through a single lead." }
-    ]
-  }
-}
+```text
+name: Features
+type: features
+order: 4
+status: active
+content: {"title":"What you get","description":"The parts of a typical build.","items":[{"icon":"plan","title":"Documented scope","description":"Budgets and schedules are written down before work starts."},{"icon":"site","title":"One site lead","description":"Trades and updates run through a single lead."}]}
+items.0.image: (file)
 ```
 
-The other types use the same request. Only `type` and `content` change.
+The other types use the same form. Only `type` and the JSON inside `content` change. `settings` is another form field, also JSON, for the header, contact, and footer. Send `id` to update a section. Leave `id` out to add one. The blocks below are the JSON you put in the `content` field.
 
 Header:
 
@@ -679,7 +657,7 @@ Auth: Bearer. One route, `/api/admin/section`.
 | Method | Path | Notes |
 | --- | --- | --- |
 | GET | `/api/admin/section` | `page`, `limit`, `search`, `type`, `status`, `pageId` |
-| PUT | `/api/admin/section` | create when `id` is omitted |
+| PUT | `/api/admin/section` | `multipart/form-data`. `content` is JSON. Files are `image` and `items.0.image` |
 | PUT | `/api/admin/section` | `{ "action": "reorder", "sections": [{ "id": "...", "order": 1 }] }` |
 | GET | `/api/admin/section?id=` | |
 | PUT | `/api/admin/section` | `{ "id", ...fields }`. Send `type` when `content` changes |
@@ -689,7 +667,7 @@ Auth: Bearer. One route, `/api/admin/section`.
 
 Types: `header`, `hero`, `about`, `services`, `features`, `statistics`, `testimonials`, `team`, `gallery`, `pricing`, `faq`, `contact`, `cta`, `partners`, `footer`, `projects`, `process`, `why-us`, `custom`.
 
-The same type can be used more than once. `content` must match `type`. Copy the body from the examples above: a hero is one block, and services and features are lists of items. `custom` accepts a free content object up to 100KB. Text fields accept either a string or `{ "$t": "key" }`.
+The same type can be used more than once. Send the request as form data. `content` is the JSON for that type, and the image files are separate fields. `custom` accepts a free content object up to 100KB. Text fields accept either a string or `{ "$t": "key" }`.
 
 `status` is `active` or `inactive`. `order` is the section's own order. The order stored on a page is separate and is what the public page uses.
 
