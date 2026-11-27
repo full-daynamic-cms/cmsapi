@@ -2,7 +2,7 @@ const express = require("express");
 const asyncHandler = require("../../utils/asyncHandler");
 const requireAuth = require("../../middleware/requireAuth");
 const rateLimit = require("../../middleware/rateLimit");
-const { uploadMediaFile } = require("../../middleware/upload");
+const { uploadMediaFile, uploadSectionFiles } = require("../../middleware/upload");
 const { sendSuccess } = require("../../utils/apiResponse");
 const resourceGateway = require("../../services/resourceGateway");
 
@@ -14,7 +14,17 @@ const acceptMediaUpload = (req, res, next) => {
   const model = String(req.params.model || "").toLowerCase();
   const contentType = req.headers["content-type"] || "";
 
-  if (model !== "media" || !contentType.toLowerCase().includes("multipart/form-data")) {
+  if (!contentType.toLowerCase().includes("multipart/form-data")) {
+    next();
+    return;
+  }
+
+  if (model === "section" || model === "sections") {
+    uploadSectionFiles(req, res, next);
+    return;
+  }
+
+  if (model !== "media") {
     next();
     return;
   }
@@ -36,7 +46,7 @@ router.put(
   "/:model",
   acceptMediaUpload,
   asyncHandler(async (req, res) => {
-    respond(res, await resourceGateway.writeAdmin(req.params.model, req.body || {}, req.user._id, req.file, req.query));
+    respond(res, await resourceGateway.writeAdmin(req.params.model, req.body || {}, req.user._id, req.file, req.query, req.files));
   })
 );
 

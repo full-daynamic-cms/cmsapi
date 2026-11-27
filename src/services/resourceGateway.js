@@ -291,17 +291,54 @@ const writePage = async (body, userId) => {
   throw new ApiError(400, "Unknown action");
 };
 
-const writeSection = async (body, userId, query) => {
-  const action = body.action || (body.id ? "update" : "create");
-  const payload = omit(body, BODY_CONTROL);
+const applySectionImages = async (payload, files, userId) => {
+  const uploads = Array.isArray(files) ? files.filter((file) => file && file.buffer) : [];
+
+  for (const file of uploads) {
+    const path = sectionValidator.sectionImagePath(file.fieldname);
+    const uploaded = await mediaLibraryService.uploadMedia({
+      file,
+      folder: "sections",
+      altText: "",
+      userId,
+    });
+    const parts = path.split(".");
+    let cursor = payload;
+
+    for (let index = 0; index < parts.length - 1; index += 1) {
+      const key = parts[index];
+      const next = parts[index + 1];
+
+      if (!cursor[key] || typeof cursor[key] !== "object") {
+        cursor[key] = /^\d+$/.test(next) ? [] : {};
+      }
+
+      cursor = cursor[key];
+    }
+
+    cursor[parts[parts.length - 1]] = uploaded.url;
+    const field = parts[parts.length - 1];
+
+    if (field === "image" || field === "logo") {
+      cursor[`${field}PublicId`] = uploaded.publicId;
+    }
+  }
+
+  return payload;
+};
+
+const writeSection = async (body, userId, query, files = []) => {
+  const source = sectionValidator.prepareSectionForm(body);
+  const action = source.action || (source.id ? "update" : "create");
+  const payload = omit(source, BODY_CONTROL);
 
   if (action === "delete") {
-    return ok(200, "Section deleted successfully", await sectionService.deleteSection(requireId(body.id), { force: isForce(body, query) }));
+    return ok(200, "Section deleted successfully", await sectionService.deleteSection(requireId(source.id), { force: isForce(body, query) }));
   }
 
   if (action === "status") {
     const validated = sectionValidator.validateSectionStatus(payload);
-    return ok(200, "Section updated successfully", await sectionService.setStatus(requireId(body.id), validated.status, userId));
+    return ok(200, "Section updated successfully", await sectionService.setStatus(requireId(source.id), validated.status, userId));
   }
 
   if (action === "reorder") {
@@ -311,16 +348,16 @@ const writeSection = async (body, userId, query) => {
 
   if (action === "duplicate") {
     const validated = sectionValidator.validateDuplicateSection(payload);
-    return ok(201, "Section duplicated successfully", await sectionService.duplicateSection(requireId(body.id), validated, userId));
+    return ok(201, "Section duplicated successfully", await sectionService.duplicateSection(requireId(source.id), validated, userId));
   }
 
   if (action === "update") {
-    const validated = sectionValidator.validateUpdateSection(payload);
-    return ok(200, "Section updated successfully", await sectionService.updateSection(requireId(body.id), validated, userId));
+    const validated = await applySectionImages(sectionValidator.validateUpdateSection(payload), files, userId);
+    return ok(200, "Section updated successfully", await sectionService.updateSection(requireId(source.id), validated, userId));
   }
 
   if (action === "create") {
-    const validated = sectionValidator.validateCreateSection(payload);
+    const validated = await applySectionImages(sectionValidator.validateCreateSection(payload), files, userId);
     return ok(201, "Section created successfully", await sectionService.createSection(validated, userId));
   }
 
@@ -479,11 +516,11 @@ const createContact = async (body) => {
   });
 };
 
-const writeAdmin = async (modelName, body, userId, file, query = {}) => {
+const writeAdmin = async (modelName, body, userId, file, query = {}, files = []) => {
   const model = canonicalModel(modelName);
 
   if (model === "page") return writePage(body, userId);
-  if (model === "section") return writeSection(body, userId, query);
+  if (model === "section") return writeSection(body, userId, query, files);
   if (model === "translation") return writeTranslation(body, userId);
   if (model === "language") return writeLanguage(body);
   if (model === "settings") return writeSettings(body, userId);

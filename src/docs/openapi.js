@@ -408,10 +408,26 @@ module.exports = {
       get: adminRead("Section", "Read a section", [recordId, query("type", { type: "string", example: "hero" }), query("status", { type: "string" }), query("search", { type: "string" }), ...paging]),
       put: {
         ...adminWrite("Section", "Add or update a section", sectionBody),
-        description: "Choose an example for the section type. Hero is one block. Services and features are a title plus a list of items. Send type again whenever content changes.",
+        description: "Send JSON, or send multipart form data when the section includes images. In form data, put the section fields in `content` as JSON and send image files as `image` or `items.0.image`.",
         requestBody: {
           required: true,
-          content: { "application/json": { schema: sectionBody, examples: sectionExamples } },
+          content: {
+            "application/json": { schema: sectionBody, examples: sectionExamples },
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                properties: {
+                  name: { type: "string", example: "Hero" },
+                  type: { type: "string", example: "hero" },
+                  order: { type: "integer", example: 1 },
+                  status: { type: "string", example: "active" },
+                  content: { type: "string", example: "{\"title\":\"Hero\",\"items\":[{\"title\":\"Photo\"}]}" },
+                  image: { type: "string", format: "binary", description: "Section image. Stored on content.image." },
+                  "items.0.image": { type: "string", format: "binary", description: "Image for the first item." },
+                },
+              },
+            },
+          },
         },
       },
     },

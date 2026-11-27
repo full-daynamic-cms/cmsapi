@@ -265,6 +265,81 @@ const nestSectionContent = (body) => {
   return next;
 };
 
+const parseJsonField = (value) => {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed || (trimmed[0] !== "{" && trimmed[0] !== "[")) {
+    return value;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+};
+
+const assignPath = (target, path, value) => {
+  const parts = path.split(".").filter(Boolean);
+  let cursor = target;
+
+  for (let index = 0; index < parts.length - 1; index += 1) {
+    const key = parts[index];
+    const next = parts[index + 1];
+
+    if (!cursor[key] || typeof cursor[key] !== "object") {
+      cursor[key] = /^\d+$/.test(next) ? [] : {};
+    }
+
+    cursor = cursor[key];
+  }
+
+  cursor[parts[parts.length - 1]] = value;
+};
+
+const prepareSectionForm = (body) => {
+  const output = {};
+
+  for (const [rawKey, rawValue] of Object.entries(body || {})) {
+    const key = rawKey.replace(/\[(\w+)\]/g, ".$1").replace(/^\./, "");
+    assignPath(output, key, parseJsonField(rawValue));
+  }
+
+  return output;
+};
+
+const sectionImagePath = (fieldname) => {
+  let name = String(fieldname || "")
+    .replace(/\[(\w+)\]/g, ".$1")
+    .replace(/^\./, "");
+
+  if (!name || name === "file") {
+    name = "image";
+  }
+
+  if (name === "image") {
+    return "content.image";
+  }
+
+  if (name === "logo") {
+    return "settings.logo";
+  }
+
+  if (!name.startsWith("content.") && !name.startsWith("settings.")) {
+    name = `content.${name}`;
+  }
+
+  if (/\.\d+$/.test(name)) {
+    return `${name}.image`;
+  }
+
+  return name;
+};
+
 const createSchema = Joi.object({
   name: Joi.string().trim().min(1).max(120).required(),
   type: Joi.string()
@@ -358,6 +433,8 @@ const duplicateSchema = Joi.object({
 module.exports = {
   assertContent,
   assertSettings,
+  prepareSectionForm,
+  sectionImagePath,
   validateCreateSection,
   validateUpdateSection,
   validateListSections: (query) => validateQuery(listQuery, query),

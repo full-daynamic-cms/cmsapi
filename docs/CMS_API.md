@@ -90,6 +90,8 @@ GET /api/admin/page?page=1&limit=10&status=published&search=home
 
 Add a section. `PUT /api/admin/section`. The `type` field chooses the `content` shape. A hero is one block. Services and features are a title plus a list of items. Attach the new section to a page with `PUT /api/admin/page` and `{ "id", "sections": [{ "section": "SECTION_ID", "order": 1 }] }`.
 
+To upload images, send `multipart/form-data` instead of JSON. Put the text in a `content` field as JSON, and send the files under `image` for the section image or `items.0.image` for the first item. The saved section stores the image URL on that field. JPEG, PNG, WEBP, GIF, and AVIF files up to 5MB are accepted.
+
 Hero. One title, one description, and one button.
 
 ```json

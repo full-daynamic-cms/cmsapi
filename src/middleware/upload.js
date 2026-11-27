@@ -58,6 +58,10 @@ const mediaFileFilter = (req, file, callback) => {
 };
 
 const uploadImage = handleUpload(createUploader(1).single("image"));
+const uploadSectionFiles = handleUpload(createUploader(20).any(), {
+  sizeMessage: "Each image must be 5MB or smaller",
+  invalidMessage: "Section image upload is invalid",
+});
 const uploadMediaFile = handleUpload(
   multer({
     storage: multer.memoryStorage(),
@@ -67,4 +71,4 @@ const uploadMediaFile = handleUpload(
   { sizeMessage: "File must be 10MB or smaller", invalidMessage: "File upload is invalid" }
 );
 
-module.exports = { uploadImage, uploadMediaFile };
+module.exports = { uploadImage, uploadMediaFile, uploadSectionFiles };
